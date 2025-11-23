@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f7f7fb; }
+      header { background: #1e3a8a; color: #fff; padding: 16px 24px; }
+      h1 { margin: 0; font-size: 22px; }
+      nav { display: flex; gap: 12px; margin-top: 8px; }
+      nav button { border: none; padding: 10px 14px; border-radius: 8px; cursor: pointer; background: #fff; color: #1e3a8a; font-weight: 600; box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+      nav button.active { background: #0ea5e9; color: #fff; }
+      main { padding: 24px; }
+      section { display: none; }
+      section.active { display: block; }
+      .card { background: #fff; padding: 16px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 16px; }
+      label { display: block; font-size: 12px; color: #374151; margin-bottom: 4px; margin-top: 8px; }
+      input, select, textarea { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #d1d5db; box-sizing: border-box; }
+      textarea { resize: vertical; }
+      .grid { display: grid; gap: 12px; }
+      .grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .items-table { width: 100%; border-collapse: collapse; }
+      .items-table th, .items-table td { border: 1px solid #e5e7eb; padding: 8px; font-size: 12px; }
+      .items-table th { background: #f1f5f9; text-transform: uppercase; letter-spacing: 0.02em; color: #111827; }
+      .badge { padding: 4px 10px; border-radius: 9999px; font-size: 12px; background: #e0f2fe; color: #0369a1; display: inline-block; }
+      .muted { color: #6b7280; font-size: 12px; }
+      .flex { display: flex; gap: 8px; align-items: center; }
+      .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+      button.primary { background: #0ea5e9; color: #fff; border: none; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 700; }
+      button.secondary { background: #e5e7eb; color: #111827; border: none; padding: 10px 16px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+      .table-scroll { overflow-x: auto; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 12px; }
+      .stat { background: #fff; padding: 12px; border-radius: 10px; box-shadow: 0 3px 10px rgba(0,0,0,0.05); }
+      .stat .value { font-size: 22px; font-weight: 800; color: #1f2937; }
+      .stat .label { font-size: 12px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+      .success { color: #16a34a; }
+      .warning { color: #d97706; }
+      .error { color: #dc2626; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>PO Portal (Apps Script)</h1>
+      <nav>
+        <button id="tab-create" class="active" onclick="switchTab('create')">เปิด PO</button>
+        <button id="tab-dashboard" onclick="switchTab('dashboard')">Dashboard</button>
+        <button id="tab-receiving" onclick="switchTab('receiving')">รับของเข้าคลัง</button>
+      </nav>
+    </header>
+    <main>
+      <section id="create" class="active">
+        <div class="card">
+          <h3>รายละเอียด PO</h3>
+          <div class="grid two">
+            <div>
+              <label>PO ID (ถ้าเว้นว่าง ระบบจะสร้างให้อัตโนมัติ)</label>
+              <input id="po_id" placeholder="PO-123" />
+            </div>
+            <div>
+              <label>Supplier ID</label>
+              <input id="supplier_id" required />
+            </div>
+            <div>
+              <label>Owner</label>
+              <input id="po_owner" />
+            </div>
+            <div>
+              <label>Total Amount</label>
+              <input id="Total_Amount" type="number" step="0.01" />
+            </div>
+            <div>
+              <label>Deposit (%)</label>
+              <input id="deposit_pct" type="number" step="0.01" />
+            </div>
+            <div>
+              <label>Requested Ship Date</label>
+              <input id="requested_ship_date" type="date" />
+            </div>
+            <div>
+              <label>Approval Status</label>
+              <select id="approval_status">
+                <option value="">เลือกรายการ</option>
+                <option>Approved</option>
+                <option>Pending</option>
+                <option>Rejected</option>
+              </select>
+            </div>
+            <div>
+              <label>สถานะรวม</label>
+              <select id="status">
+                <option>Draft</option>
+                <option>Ordered</option>
+                <option>In Transit</option>
+                <option>Delivered</option>
+                <option>Closed</option>
+              </select>
+            </div>
+          </div>
+          <label>เงื่อนไขการจ่าย / Note</label>
+          <textarea id="conditions_pay" rows="2" placeholder="เงื่อนไขการจ่ายเงิน, หมายเหตุ" ></textarea>
+        </div>
+
+        <div class="card">
+          <div class="flex" style="justify-content: space-between;">
+            <h3>รายการย่อย (Line items)</h3>
+            <button class="secondary" onclick="addItem()">+ เพิ่มรายการ</button>
+          </div>
+          <div class="table-scroll">
+            <table class="items-table" id="items-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Description</th>
+                  <th>Qty</th>
+                  <th>Unit Price</th>
+                  <th>Currency</th>
+                  <th>Req. Delivery</th>
+                  <th>Confirmed</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="secondary" onclick="resetForm()">ล้างข้อมูล</button>
+          <button class="primary" onclick="submitPo()">บันทึก PO</button>
+        </div>
+      </section>
+
+      <section id="dashboard">
+        <div class="card">
+          <h3>ภาพรวมสถานะ PO</h3>
+          <div class="stats" id="status-stats"></div>
+        </div>
+        <div class="card">
+          <h3>Leadtime by Supplier</h3>
+          <div class="table-scroll">
+            <table class="items-table" id="supplier-leadtimes">
+              <thead>
+                <tr><th>Supplier</th><th>POs</th><th>Avg Leadtime (days)</th><th>Sample size</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <h3>PO ล่าสุด</h3>
+          <div class="table-scroll">
+            <table class="items-table" id="recent-pos">
+              <thead>
+                <tr><th>PO</th><th>Supplier</th><th>Status</th><th>Requested Ship</th><th>Delivery</th><th>Amount</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="receiving">
+        <div class="card">
+          <h3>บันทึกรับของเข้าคลัง</h3>
+          <div class="grid two">
+            <div>
+              <label>PO ID</label>
+              <input id="recv_po_id" placeholder="PO-123" />
+            </div>
+            <div>
+              <label>สถานะใหม่</label>
+              <select id="recv_status">
+                <option>In Transit</option>
+                <option>Delivered</option>
+                <option>Closed</option>
+              </select>
+            </div>
+            <div>
+              <label>วันที่รับของ</label>
+              <input id="delivery_date" type="date" />
+            </div>
+            <div>
+              <label>ผู้รับ</label>
+              <input id="delivery_reciver" />
+            </div>
+            <div>
+              <label>จำนวนที่รับ</label>
+              <input id="delivery_recived" />
+            </div>
+            <div>
+              <label>หมายเหตุ</label>
+              <input id="delivery_note" />
+            </div>
+          </div>
+          <div class="actions">
+            <button class="primary" onclick="submitReceiving()">บันทึกรับของ</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const itemsTableBody = document.querySelector('#items-table tbody');
+
+      function switchTab(tabId) {
+        document.querySelectorAll('section').forEach(sec => sec.classList.remove('active'));
+        document.querySelectorAll('nav button').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        document.getElementById(`tab-${tabId}`).classList.add('active');
+        if (tabId === 'dashboard') {
+          loadDashboard();
+        }
+      }
+
+      function addItem() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td></td>
+          <td><input placeholder="รายละเอียด" /></td>
+          <td><input type="number" step="0.01" /></td>
+          <td><input type="number" step="0.01" /></td>
+          <td><input value="USD" /></td>
+          <td><input type="date" /></td>
+          <td><input type="date" /></td>
+          <td><input placeholder="หมายเหตุ" /></td>
+        `;
+        itemsTableBody.appendChild(row);
+        refreshLineNumbers();
+      }
+
+      function refreshLineNumbers() {
+        Array.from(itemsTableBody.children).forEach((row, idx) => {
+          row.children[0].textContent = idx + 1;
+        });
+      }
+
+      function resetForm() {
+        document.querySelectorAll('#create input, #create textarea, #create select').forEach(el => {
+          if (el.type === 'select-one') {
+            el.selectedIndex = 0;
+          } else {
+            el.value = '';
+          }
+        });
+        itemsTableBody.innerHTML = '';
+      }
+
+      function collectItems() {
+        return Array.from(itemsTableBody.children).map((row, idx) => ({
+          line_no: idx + 1,
+          description: row.children[1].querySelector('input').value,
+          quantity: row.children[2].querySelector('input').value,
+          unit_price: row.children[3].querySelector('input').value,
+          currency: row.children[4].querySelector('input').value,
+          requested_delivery_date: row.children[5].querySelector('input').value,
+          confirmed_delivery_date: row.children[6].querySelector('input').value,
+          receiving_note: row.children[7].querySelector('input').value
+        }));
+      }
+
+      function submitPo() {
+        const po = {};
+        ['po_id','supplier_id','po_owner','Total_Amount','deposit_pct','requested_ship_date','approval_status','status','conditions_pay']
+          .forEach(id => { po[id] = document.getElementById(id).value; });
+
+        const items = collectItems();
+
+        google.script.run
+          .withSuccessHandler(res => {
+            alert(`บันทึกแล้ว: ${res.po_id}`);
+            resetForm();
+          })
+          .withFailureHandler(err => alert(err.message || err))
+          .createPo({ po, items });
+      }
+
+      function loadDashboard() {
+        const statusEl = document.getElementById('status-stats');
+        const supplierTable = document.querySelector('#supplier-leadtimes tbody');
+        const recentTable = document.querySelector('#recent-pos tbody');
+        statusEl.innerHTML = '<div class="muted">Loading...</div>';
+        supplierTable.innerHTML = '';
+        recentTable.innerHTML = '';
+
+        google.script.run.withSuccessHandler(data => {
+          statusEl.innerHTML = '';
+          const statuses = Object.keys(data.counts).sort();
+          statuses.forEach(key => {
+            const card = document.createElement('div');
+            card.className = 'stat';
+            card.innerHTML = `<div class="label">${key}</div><div class="value">${data.counts[key]}</div>`;
+            statusEl.appendChild(card);
+          });
+
+          data.suppliers.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${row.supplier_id}</td><td>${row.pos}</td><td>${row.avg_leadtime_days ?? '-'}</td><td>${row.samples}</td>`;
+            supplierTable.appendChild(tr);
+          });
+
+          data.pos.forEach(po => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+              <td>${po.po_id}</td>
+              <td>${po.supplier_id || '-'}</td>
+              <td><span class="badge">${po.status || '-'}</span></td>
+              <td>${formatDate(po.requested_ship_date)}</td>
+              <td>${formatDate(po.delivery_date || po.Real_Recived)}</td>
+              <td>${po.Total_Amount || '-'}</td>
+            `;
+            recentTable.appendChild(tr);
+          });
+        }).withFailureHandler(err => {
+          statusEl.innerHTML = `<span class="error">${err.message || err}</span>`;
+        }).getDashboardData();
+      }
+
+      function formatDate(val) {
+        if (!val) return '-';
+        const d = new Date(val);
+        if (!isNaN(d)) {
+          return d.toISOString().slice(0,10);
+        }
+        return val;
+      }
+
+      function submitReceiving() {
+        const payload = {
+          po_id: document.getElementById('recv_po_id').value,
+          status: document.getElementById('recv_status').value,
+          delivery_date: document.getElementById('delivery_date').value,
+          delivery_reciver: document.getElementById('delivery_reciver').value,
+          delivery_recived: document.getElementById('delivery_recived').value,
+          delivery_note: document.getElementById('delivery_note').value
+        };
+        google.script.run
+          .withSuccessHandler(() => alert('บันทึกการรับของเรียบร้อย'))
+          .withFailureHandler(err => alert(err.message || err))
+          .updateReceiving(payload);
+      }
+
+      addItem();
+    </script>
+  </body>
+</html>
