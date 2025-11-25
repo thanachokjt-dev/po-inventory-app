@@ -245,8 +245,9 @@ function getPoWithItems(poId) {
   var poHeaderIndex = buildHeaderIndex_(poHeaders);
   var headerRow = null;
   for (var i = 1; i < poValues.length; i++) {
-    if (poValues[i][poHeaderIndex['po_id']] == poId) {
-      headerRow = poValues[i];
+    var row = poValues[i];
+    if (String(row[poHeaderIndex['po_id']]) === String(poId)) {
+      headerRow = row;
       break;
     }
   }
@@ -256,8 +257,8 @@ function getPoWithItems(poId) {
   }
 
   var header = {};
-  poHeaders.forEach(function (name, idx) {
-    header[name] = headerRow[idx];
+  Object.keys(poHeaderIndex).forEach(function (name) {
+    header[name] = headerRow[poHeaderIndex[name]];
   });
 
   var itemsSheet = getPoItemsSheet_();
