@@ -263,25 +263,28 @@ function getPoWithItems(poId) {
 
   var itemsSheet = getPoItemsSheet_();
   var itemValues = itemsSheet.getDataRange().getValues();
-  var itemHeaders = itemValues[0];
-  var itemHeaderIndex = buildHeaderIndex_(itemHeaders);
   var items = [];
 
-  for (var j = 1; j < itemValues.length; j++) {
-    var row = itemValues[j];
-    if (row[itemHeaderIndex['po_id']] == poId) {
-      items.push({
-        line_no: row[itemHeaderIndex['line_no']],
-        sku: row[itemHeaderIndex['sku']],
-        product_title: row[itemHeaderIndex['product_title']],
-        variant_title: row[itemHeaderIndex['variant_title']],
-        image_url: row[itemHeaderIndex['image_url']],
-        qty: row[itemHeaderIndex['qty']],
-        unit_price: row[itemHeaderIndex['unit_price']],
-        line_amount: row[itemHeaderIndex['line_amount']],
-        currency: row[itemHeaderIndex['currency']],
-        remark: row[itemHeaderIndex['remark']]
-      });
+  if (itemValues.length > 1) {
+    var itemHeaders = itemValues[0];
+    var itemHeaderIndex = buildHeaderIndex_(itemHeaders);
+
+    for (var j = 1; j < itemValues.length; j++) {
+      var row = itemValues[j];
+      if (String(row[itemHeaderIndex['po_id']]) === String(poId)) {
+        items.push({
+          line_no: row[itemHeaderIndex['line_no']],
+          sku: row[itemHeaderIndex['sku']],
+          product_title: row[itemHeaderIndex['product_title']],
+          variant_title: row[itemHeaderIndex['variant_title']],
+          image_url: row[itemHeaderIndex['image_url']],
+          qty: row[itemHeaderIndex['qty']],
+          unit_price: row[itemHeaderIndex['unit_price']],
+          line_amount: row[itemHeaderIndex['line_amount']],
+          currency: row[itemHeaderIndex['currency']],
+          remark: row[itemHeaderIndex['remark']]
+        });
+      }
     }
   }
 

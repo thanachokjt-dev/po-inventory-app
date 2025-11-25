@@ -353,6 +353,7 @@
       var supplierCache = [];
       var productCache = [];
       var dashboardData = { stats: {}, list: [] };
+      var dashboardLoaded = false;
       var activeTab = 'create';
 
       // Header fields used in PO_MASTER
@@ -768,8 +769,13 @@
 
       // ---------------- Dashboard ----------------
       function loadDashboard() {
+        if (dashboardLoaded && dashboardData.list.length) {
+          renderDashboardFromData(dashboardData);
+          return;
+        }
         google.script.run
           .withSuccessHandler(function(data){
+            dashboardLoaded = true;
             renderDashboardFromData(data || { stats: {}, list: [] });
           })
           .withFailureHandler(function(err){
