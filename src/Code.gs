@@ -1,14 +1,7 @@
 // Entry point for the web app. Returns the HTML file.
-// Keeping this as a simple global function avoids "Script function not found: doGet"
-// errors when deploying as a Web App from the bound spreadsheet.
-function doGet(e) {
-  var template = HtmlService.createTemplateFromFile('Index');
-  return template
-    .evaluate()
-    .setTitle('PO System')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index').evaluate();
 }
-
 // Helper to get a sheet by name from the active spreadsheet
 function getSheet_(name) {
   var ss = SpreadsheetApp.getActive();
