@@ -231,12 +231,16 @@ function savePoWithItems(payload) {
 
 // --------------------- Load PO with items ---------------------
 function getPoWithItems(poId) {
-  if (!poId) return null;
+  if (!poId) {
+    throw new Error('poId is required');
+  }
+
   var poSheet = getPoMasterSheet_();
   var poValues = poSheet.getDataRange().getValues();
   if (poValues.length <= 1) {
-    return null;
+    throw new Error('PO not found: ' + poId);
   }
+
   var poHeaders = poValues[0];
   var poHeaderIndex = buildHeaderIndex_(poHeaders);
   var headerRow = null;
@@ -246,9 +250,11 @@ function getPoWithItems(poId) {
       break;
     }
   }
+
   if (!headerRow) {
-    return null;
+    throw new Error('PO not found: ' + poId);
   }
+
   var header = {};
   poHeaders.forEach(function (name, idx) {
     header[name] = headerRow[idx];
@@ -259,6 +265,7 @@ function getPoWithItems(poId) {
   var itemHeaders = itemValues[0];
   var itemHeaderIndex = buildHeaderIndex_(itemHeaders);
   var items = [];
+
   for (var j = 1; j < itemValues.length; j++) {
     var row = itemValues[j];
     if (row[itemHeaderIndex['po_id']] == poId) {
@@ -276,6 +283,7 @@ function getPoWithItems(poId) {
       });
     }
   }
+
   items.sort(function (a, b) {
     return Number(a.line_no) - Number(b.line_no);
   });
@@ -283,5 +291,41 @@ function getPoWithItems(poId) {
   return {
     header: header,
     items: items
+  };
+}
+
+// --------------------- Dashboard data ---------------------
+function getPoDashboardData() {
+  var poSheet = getPoMasterSheet_();
+  var poValues = poSheet.getDataRange().getValues();
+  if (poValues.length <= 1) {
+    return { stats: {}, list: [] };
+  }
+
+  var headers = poValues[0];
+  var headerIndex = buildHeaderIndex_(headers);
+  var list = [];
+  var stats = {};
+
+  for (var i = 1; i < poValues.length; i++) {
+    var row = poValues[i];
+    var status = row[headerIndex['status_stage']] || 'Unknown';
+    stats[status] = (stats[status] || 0) + 1;
+
+    list.push({
+      po_id: row[headerIndex['po_id']],
+      po_date: row[headerIndex['po_date']],
+      supplier_name: row[headerIndex['supplier_name']],
+      po_amount_foreign: row[headerIndex['po_amount_foreign']],
+      currency: row[headerIndex['currency']],
+      status_stage: row[headerIndex['status_stage']],
+      eta_date: row[headerIndex['eta_date']],
+      wh_received_date: row[headerIndex['wh_received_date']]
+    });
+  }
+
+  return {
+    stats: stats,
+    list: list
   };
 }
