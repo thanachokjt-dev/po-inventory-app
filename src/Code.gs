@@ -1,3 +1,7 @@
+// Entry point for the web app. Returns the HTML file.
+function doGet() {
+  return HtmlService.createTemplateFromFile('Index').evaluate();
+}
 // Helper to get a sheet by name from the active spreadsheet
 function getSheet_(name) {
   var ss = SpreadsheetApp.getActive();
