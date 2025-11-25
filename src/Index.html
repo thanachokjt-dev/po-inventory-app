@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      h1 { margin-bottom: 0; }
+      .section { border: 1px solid #ccc; padding: 12px; margin-top: 16px; border-radius: 6px; }
+      .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 16px; }
+      label { display: block; font-weight: bold; margin-bottom: 4px; }
+      input[type="text"], input[type="date"], input[type="number"], select, textarea { width: 100%; box-sizing: border-box; padding: 6px; }
+      textarea { min-height: 60px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
+      th { background: #f5f5f5; }
+      .actions { margin-top: 12px; }
+      .img-preview { width: 60px; height: 60px; object-fit: contain; border: 1px solid #ddd; }
+      .readonly { background: #f9f9f9; }
+      .inline { display: inline-block; margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Create / Edit PO</h1>
+
+    <div class="section">
+      <div class="form-grid">
+        <div>
+          <label for="po_id">PO ID</label>
+          <input type="text" id="po_id">
+        </div>
+        <div>
+          <label for="po_title">PO Title</label>
+          <input type="text" id="po_title">
+        </div>
+        <div>
+          <label for="po_date">PO Date</label>
+          <input type="date" id="po_date">
+        </div>
+        <div>
+          <label for="requester">Requester</label>
+          <input type="text" id="requester">
+        </div>
+        <div>
+          <label for="po_owner">PO Owner</label>
+          <input type="text" id="po_owner">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Supplier</h3>
+      <div class="form-grid">
+        <div>
+          <label for="supplier_code">Supplier Code</label>
+          <select id="supplier_code"></select>
+        </div>
+        <div>
+          <label for="supplier_name">Supplier Name</label>
+          <input type="text" id="supplier_name" class="readonly" readonly>
+        </div>
+        <div>
+          <label for="currency">Currency</label>
+          <input type="text" id="currency" class="readonly" readonly>
+        </div>
+        <div>
+          <label for="incoterm">Incoterm</label>
+          <input type="text" id="incoterm" class="readonly" readonly>
+        </div>
+        <div>
+          <label for="ship_mode">Ship Mode</label>
+          <input type="text" id="ship_mode" class="readonly" readonly>
+        </div>
+        <div>
+          <label for="payment_terms_text">Payment Terms</label>
+          <textarea id="payment_terms_text" class="readonly" readonly></textarea>
+        </div>
+        <div>
+          <label for="bank_detail">Bank Detail</label>
+          <textarea id="bank_detail" class="readonly" readonly></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Totals</h3>
+      <div class="form-grid">
+        <div>
+          <label for="po_amount_foreign">PO Amount (Foreign)</label>
+          <input type="number" id="po_amount_foreign" step="0.01">
+        </div>
+        <div>
+          <label for="fx_rate_ref">FX Rate Ref</label>
+          <input type="number" id="fx_rate_ref" step="0.0001">
+        </div>
+        <div>
+          <label for="po_amount_thb">PO Amount (THB)</label>
+          <input type="number" id="po_amount_thb" step="0.01">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Payment Terms</h3>
+      <div class="form-grid">
+        <div>
+          <label for="pay1_type">Pay1 Type</label>
+          <input type="text" id="pay1_type">
+        </div>
+        <div>
+          <label for="pay1_pct">Pay1 %</label>
+          <input type="number" id="pay1_pct" step="0.01">
+        </div>
+        <div>
+          <label for="pay1_amount">Pay1 Amount</label>
+          <input type="number" id="pay1_amount" step="0.01">
+        </div>
+        <div>
+          <label for="pay1_due_date">Pay1 Due Date</label>
+          <input type="date" id="pay1_due_date">
+        </div>
+        <div>
+          <label for="pay1_paid_date">Pay1 Paid Date</label>
+          <input type="date" id="pay1_paid_date">
+        </div>
+        <div>
+          <label for="pay1_slip_link">Pay1 Slip Link</label>
+          <input type="text" id="pay1_slip_link">
+        </div>
+
+        <div>
+          <label for="pay2_type">Pay2 Type</label>
+          <input type="text" id="pay2_type">
+        </div>
+        <div>
+          <label for="pay2_pct">Pay2 %</label>
+          <input type="number" id="pay2_pct" step="0.01">
+        </div>
+        <div>
+          <label for="pay2_amount">Pay2 Amount</label>
+          <input type="number" id="pay2_amount" step="0.01">
+        </div>
+        <div>
+          <label for="pay2_due_date">Pay2 Due Date</label>
+          <input type="date" id="pay2_due_date">
+        </div>
+        <div>
+          <label for="pay2_paid_date">Pay2 Paid Date</label>
+          <input type="date" id="pay2_paid_date">
+        </div>
+        <div>
+          <label for="pay2_slip_link">Pay2 Slip Link</label>
+          <input type="text" id="pay2_slip_link">
+        </div>
+
+        <div>
+          <label for="pay3_type">Pay3 Type</label>
+          <input type="text" id="pay3_type">
+        </div>
+        <div>
+          <label for="pay3_pct">Pay3 %</label>
+          <input type="number" id="pay3_pct" step="0.01">
+        </div>
+        <div>
+          <label for="pay3_amount">Pay3 Amount</label>
+          <input type="number" id="pay3_amount" step="0.01">
+        </div>
+        <div>
+          <label for="pay3_due_date">Pay3 Due Date</label>
+          <input type="date" id="pay3_due_date">
+        </div>
+        <div>
+          <label for="pay3_paid_date">Pay3 Paid Date</label>
+          <input type="date" id="pay3_paid_date">
+        </div>
+        <div>
+          <label for="pay3_slip_link">Pay3 Slip Link</label>
+          <input type="text" id="pay3_slip_link">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Status & Timeline</h3>
+      <div class="form-grid">
+        <div>
+          <label for="status_stage">Status Stage</label>
+          <select id="status_stage">
+            <option value="Draft">Draft</option>
+            <option value="In production">In production</option>
+            <option value="Ready to ship">Ready to ship</option>
+            <option value="In transit">In transit</option>
+            <option value="At customs">At customs</option>
+            <option value="In warehouse">In warehouse</option>
+            <option value="Closed">Closed</option>
+          </select>
+        </div>
+        <div>
+          <label for="status_detail">Status Detail</label>
+          <textarea id="status_detail"></textarea>
+        </div>
+        <div>
+          <label for="etd_date">ETD Date</label>
+          <input type="date" id="etd_date">
+        </div>
+        <div>
+          <label for="eta_date">ETA Date</label>
+          <input type="date" id="eta_date">
+        </div>
+        <div>
+          <label for="wh_received_date">WH Received Date</label>
+          <input type="date" id="wh_received_date">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Next Action</h3>
+      <div class="form-grid">
+        <div>
+          <label for="next_action_what">What</label>
+          <input type="text" id="next_action_what">
+        </div>
+        <div>
+          <label for="next_action_who">Who</label>
+          <input type="text" id="next_action_who">
+        </div>
+        <div>
+          <label for="next_action_when">When</label>
+          <input type="date" id="next_action_when">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Documents</h3>
+      <div class="form-grid">
+        <div>
+          <label for="po_pdf_link">PO PDF Link</label>
+          <input type="text" id="po_pdf_link">
+        </div>
+        <div>
+          <label for="invoice_link">Invoice Link</label>
+          <input type="text" id="invoice_link">
+        </div>
+        <div>
+          <label for="duty_tax_bill_link">Duty Tax Bill Link</label>
+          <input type="text" id="duty_tax_bill_link">
+        </div>
+        <div>
+          <label for="remark">Remark</label>
+          <textarea id="remark"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>PO Items</h3>
+      <datalist id="sku-list"></datalist>
+      <div class="actions">
+        <button type="button" onclick="addItemRow()">Add line</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Line</th>
+            <th>SKU</th>
+            <th>Product Title</th>
+            <th>Variant Title</th>
+            <th>Image</th>
+            <th>Qty</th>
+            <th>Unit Price</th>
+            <th>Line Amount</th>
+            <th>Remark</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+
+    <div class="section">
+      <h3>Save / Load</h3>
+      <div class="actions">
+        <button type="button" onclick="savePo()">Save PO</button>
+      </div>
+      <div style="margin-top:10px;">
+        <label for="po_id_to_load"><strong>Load PO ID:</strong></label>
+        <input type="text" id="po_id_to_load">
+        <button type="button" onclick="loadPo()">Load</button>
+      </div>
+      <div id="message" style="margin-top:10px;color:green;"></div>
+    </div>
+
+    <script>
+      // Cache for supplier and product data
+      var supplierCache = [];
+      var productCache = [];
+
+      // Header fields used in PO_MASTER
+      var headerFields = [
+        'po_id','po_title','po_date','requester','po_owner','supplier_code','supplier_name','currency','incoterm','ship_mode','po_amount_foreign','fx_rate_ref','po_amount_thb','payment_terms_text','pay1_type','pay1_pct','pay1_amount','pay1_due_date','pay1_paid_date','pay1_slip_link','pay2_type','pay2_pct','pay2_amount','pay2_due_date','pay2_paid_date','pay2_slip_link','pay3_type','pay3_pct','pay3_amount','pay3_due_date','pay3_paid_date','pay3_slip_link','status_stage','status_detail','etd_date','eta_date','wh_received_date','next_action_what','next_action_who','next_action_when','po_pdf_link','invoice_link','duty_tax_bill_link','remark'
+      ];
+
+      document.addEventListener('DOMContentLoaded', function() {
+        loadSuppliers();
+        loadProducts();
+        addItemRow();
+        document.getElementById('supplier_code').addEventListener('change', onSupplierChange);
+      });
+
+      function setMessage(text, isError) {
+        var el = document.getElementById('message');
+        el.style.color = isError ? 'red' : 'green';
+        el.textContent = text || '';
+      }
+
+      // ---------------- Supplier helpers ----------------
+      function loadSuppliers() {
+        google.script.run.withSuccessHandler(function(data) {
+          supplierCache = data || [];
+          var select = document.getElementById('supplier_code');
+          select.innerHTML = '<option value="">--Select--</option>';
+          supplierCache.forEach(function(s) {
+            var opt = document.createElement('option');
+            opt.value = s.supplier_code;
+            opt.textContent = s.supplier_code + ' - ' + s.supplier_name;
+            select.appendChild(opt);
+          });
+        }).withFailureHandler(function(err){
+          alert('Failed to load suppliers: ' + err);
+        }).listSuppliers();
+      }
+
+      function onSupplierChange() {
+        var code = document.getElementById('supplier_code').value;
+        if (!code) {
+          clearSupplierFields();
+          return;
+        }
+        google.script.run.withSuccessHandler(function(supplier) {
+          if (!supplier) {
+            alert('Supplier not found');
+            clearSupplierFields();
+            return;
+          }
+          document.getElementById('supplier_name').value = supplier.supplier_name || '';
+          document.getElementById('currency').value = supplier.currency || '';
+          document.getElementById('incoterm').value = supplier.incoterm || '';
+          document.getElementById('ship_mode').value = supplier.ship_mode || '';
+          document.getElementById('payment_terms_text').value = supplier.payment_terms_text || '';
+          document.getElementById('bank_detail').value = supplier.bank_detail || '';
+        }).withFailureHandler(function(err){
+          alert('Failed to fetch supplier: ' + err);
+        }).getSupplierByCode(code);
+      }
+
+      function clearSupplierFields() {
+        ['supplier_name','currency','incoterm','ship_mode','payment_terms_text','bank_detail'].forEach(function(id){
+          document.getElementById(id).value = '';
+        });
+      }
+
+      // ---------------- Product helpers ----------------
+      function loadProducts() {
+        google.script.run.withSuccessHandler(function(products) {
+          productCache = products || [];
+          var list = document.getElementById('sku-list');
+          list.innerHTML = '';
+          productCache.forEach(function(p) {
+            var opt = document.createElement('option');
+            opt.value = p.sku;
+            opt.label = p.sku + ' - ' + p.productName + ' (' + (p.fullName || (p.color || '') + ' ' + (p.size || '')) + ')';
+            list.appendChild(opt);
+          });
+        }).withFailureHandler(function(err){
+          alert('Failed to load products: ' + err);
+        }).listProductsForUi();
+      }
+
+      function findProductBySku(sku) {
+        return productCache.find(function(p) { return p.sku == sku; }) || null;
+      }
+
+      // ---------------- Items table ----------------
+      function addItemRow(item) {
+        var tbody = document.getElementById('items-body');
+        var row = document.createElement('tr');
+
+        var lineCell = document.createElement('td');
+        lineCell.textContent = tbody.children.length + 1;
+        row.appendChild(lineCell);
+
+        var skuCell = document.createElement('td');
+        var skuInput = document.createElement('input');
+        skuInput.type = 'text';
+        skuInput.list = 'sku-list';
+        skuInput.value = item && item.sku ? item.sku : '';
+        skuInput.onchange = function() { onSkuChange(row); };
+        skuCell.appendChild(skuInput);
+        row.appendChild(skuCell);
+
+        var productCell = document.createElement('td');
+        var productInput = document.createElement('input');
+        productInput.type = 'text';
+        productInput.readOnly = true;
+        productInput.className = 'readonly';
+        productInput.value = item && item.product_title ? item.product_title : '';
+        productCell.appendChild(productInput);
+        row.appendChild(productCell);
+
+        var variantCell = document.createElement('td');
+        var variantInput = document.createElement('input');
+        variantInput.type = 'text';
+        variantInput.readOnly = true;
+        variantInput.className = 'readonly';
+        variantInput.value = item && item.variant_title ? item.variant_title : '';
+        variantCell.appendChild(variantInput);
+        row.appendChild(variantCell);
+
+        var imgCell = document.createElement('td');
+        var img = document.createElement('img');
+        img.className = 'img-preview';
+        img.src = item && item.image_url ? item.image_url : '';
+        img.alt = 'No image';
+        imgCell.appendChild(img);
+        row.appendChild(imgCell);
+
+        var qtyCell = document.createElement('td');
+        var qtyInput = document.createElement('input');
+        qtyInput.type = 'number';
+        qtyInput.step = '0.01';
+        qtyInput.value = item && item.qty ? item.qty : '';
+        qtyInput.oninput = function() { updateLineAmount(row); };
+        qtyCell.appendChild(qtyInput);
+        row.appendChild(qtyCell);
+
+        var priceCell = document.createElement('td');
+        var priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.step = '0.01';
+        priceInput.value = item && item.unit_price ? item.unit_price : '';
+        priceInput.oninput = function() { updateLineAmount(row); };
+        priceCell.appendChild(priceInput);
+        row.appendChild(priceCell);
+
+        var amountCell = document.createElement('td');
+        var amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.readOnly = true;
+        amountInput.className = 'readonly';
+        amountInput.value = item && item.line_amount ? item.line_amount : '';
+        amountCell.appendChild(amountInput);
+        row.appendChild(amountCell);
+
+        var remarkCell = document.createElement('td');
+        var remarkInput = document.createElement('input');
+        remarkInput.type = 'text';
+        remarkInput.value = item && item.remark ? item.remark : '';
+        remarkCell.appendChild(remarkInput);
+        row.appendChild(remarkCell);
+
+        var actionCell = document.createElement('td');
+        var removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.type = 'button';
+        removeBtn.onclick = function() {
+          row.remove();
+          refreshLineNumbers();
+        };
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+        onSkuChange(row); // auto-fill if default
+        updateLineAmount(row);
+      }
+
+      function onSkuChange(row) {
+        var sku = row.querySelector('td:nth-child(2) input').value;
+        var product = findProductBySku(sku);
+        var productInput = row.querySelector('td:nth-child(3) input');
+        var variantInput = row.querySelector('td:nth-child(4) input');
+        var img = row.querySelector('td:nth-child(5) img');
+
+        if (product) {
+          productInput.value = product.productName || '';
+          var variantTitle = product.fullName || [product.color || '', product.size || ''].join(' ').trim();
+          variantInput.value = variantTitle;
+          img.src = product.variantImage || product.productImage || '';
+        } else {
+          productInput.value = '';
+          variantInput.value = '';
+          img.src = '';
+          if (sku) {
+            alert('Product not found for SKU: ' + sku);
+          }
+        }
+        updateLineAmount(row);
+      }
+
+      function updateLineAmount(row) {
+        var qty = parseFloat(row.querySelector('td:nth-child(6) input').value) || 0;
+        var price = parseFloat(row.querySelector('td:nth-child(7) input').value) || 0;
+        var amountInput = row.querySelector('td:nth-child(8) input');
+        amountInput.value = (qty * price).toFixed(2);
+      }
+
+      function refreshLineNumbers() {
+        var rows = document.querySelectorAll('#items-body tr');
+        rows.forEach(function(r, idx) {
+          r.querySelector('td:first-child').textContent = idx + 1;
+        });
+      }
+
+      // ---------------- Save / Load ----------------
+      function collectHeader() {
+        var header = {};
+        headerFields.forEach(function(name) {
+          var el = document.getElementById(name);
+          header[name] = el ? el.value : '';
+        });
+        return header;
+      }
+
+      function collectItems() {
+        var rows = document.querySelectorAll('#items-body tr');
+        var items = [];
+        rows.forEach(function(row, idx) {
+          var item = {
+            line_no: idx + 1,
+            sku: row.querySelector('td:nth-child(2) input').value,
+            product_title: row.querySelector('td:nth-child(3) input').value,
+            variant_title: row.querySelector('td:nth-child(4) input').value,
+            image_url: row.querySelector('td:nth-child(5) img').src,
+            qty: parseFloat(row.querySelector('td:nth-child(6) input').value) || 0,
+            unit_price: parseFloat(row.querySelector('td:nth-child(7) input').value) || 0,
+            line_amount: parseFloat(row.querySelector('td:nth-child(8) input').value) || 0,
+            currency: document.getElementById('currency').value,
+            remark: row.querySelector('td:nth-child(9) input').value
+          };
+          items.push(item);
+        });
+        return items;
+      }
+
+      function savePo() {
+        setMessage('');
+        var header = collectHeader();
+        if (!header.po_id) {
+          alert('PO ID is required');
+          return;
+        }
+        var items = collectItems();
+        header.po_amount_foreign = parseFloat(header.po_amount_foreign) || '';
+        header.fx_rate_ref = parseFloat(header.fx_rate_ref) || '';
+        header.po_amount_thb = parseFloat(header.po_amount_thb) || '';
+
+        var payload = { header: header, items: items };
+        google.script.run.withSuccessHandler(function(){
+          setMessage('PO saved');
+        }).withFailureHandler(function(err){
+          alert('Save failed: ' + err);
+        }).savePoWithItems(payload);
+      }
+
+      function loadPo() {
+        setMessage('');
+        var poId = document.getElementById('po_id_to_load').value;
+        if (!poId) {
+          alert('Please enter a PO ID to load');
+          return;
+        }
+        google.script.run.withSuccessHandler(function(data){
+          if (!data) {
+            alert('PO not found');
+            return;
+          }
+          fillFormFromPo(data);
+          setMessage('PO loaded');
+        }).withFailureHandler(function(err){
+          alert('Load failed: ' + err);
+        }).getPoWithItems(poId);
+      }
+
+      function fillFormFromPo(data) {
+        headerFields.forEach(function(name) {
+          var el = document.getElementById(name);
+          if (el) {
+            el.value = data.header[name] || '';
+          }
+        });
+        // Refresh supplier info if code exists
+        if (data.header.supplier_code) {
+          document.getElementById('supplier_code').value = data.header.supplier_code;
+          onSupplierChange();
+        }
+
+        // Build items table
+        var tbody = document.getElementById('items-body');
+        tbody.innerHTML = '';
+        if (data.items && data.items.length) {
+          data.items.forEach(function(item){ addItemRow(item); });
+        } else {
+          addItemRow();
+        }
+        refreshLineNumbers();
+      }
+    </script>
+  </body>
+</html>
