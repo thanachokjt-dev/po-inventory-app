@@ -1,7 +1,14 @@
 // Entry point for the web app. Returns the HTML file.
-function doGet() {
-  return HtmlService.createTemplateFromFile('Index').evaluate();
+// Keeping this as a simple global function avoids "Script function not found: doGet"
+// errors when deploying as a Web App from the bound spreadsheet.
+function doGet(e) {
+  var template = HtmlService.createTemplateFromFile('Index');
+  return template
+    .evaluate()
+    .setTitle('PO System')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+
 // Helper to get a sheet by name from the active spreadsheet
 function getSheet_(name) {
   var ss = SpreadsheetApp.getActive();
@@ -224,27 +231,34 @@ function savePoWithItems(payload) {
 
 // --------------------- Load PO with items ---------------------
 function getPoWithItems(poId) {
-  if (!poId) return null;
+  if (!poId) {
+    throw new Error('poId is required');
+  }
+
   var poSheet = getPoMasterSheet_();
   var poValues = poSheet.getDataRange().getValues();
   if (poValues.length <= 1) {
-    return null;
+    throw new Error('PO not found: ' + poId);
   }
+
   var poHeaders = poValues[0];
   var poHeaderIndex = buildHeaderIndex_(poHeaders);
   var headerRow = null;
   for (var i = 1; i < poValues.length; i++) {
-    if (poValues[i][poHeaderIndex['po_id']] == poId) {
-      headerRow = poValues[i];
+    var row = poValues[i];
+    if (String(row[poHeaderIndex['po_id']]) === String(poId)) {
+      headerRow = row;
       break;
     }
   }
+
   if (!headerRow) {
-    return null;
+    throw new Error('PO not found: ' + poId);
   }
+
   var header = {};
-  poHeaders.forEach(function (name, idx) {
-    header[name] = headerRow[idx];
+  Object.keys(poHeaderIndex).forEach(function (name) {
+    header[name] = headerRow[poHeaderIndex[name]];
   });
 
   var itemsSheet = getPoItemsSheet_();
@@ -252,6 +266,7 @@ function getPoWithItems(poId) {
   var itemHeaders = itemValues[0];
   var itemHeaderIndex = buildHeaderIndex_(itemHeaders);
   var items = [];
+
   for (var j = 1; j < itemValues.length; j++) {
     var row = itemValues[j];
     if (row[itemHeaderIndex['po_id']] == poId) {
@@ -269,6 +284,7 @@ function getPoWithItems(poId) {
       });
     }
   }
+
   items.sort(function (a, b) {
     return Number(a.line_no) - Number(b.line_no);
   });
@@ -276,5 +292,41 @@ function getPoWithItems(poId) {
   return {
     header: header,
     items: items
+  };
+}
+
+// --------------------- Dashboard data ---------------------
+function getPoDashboardData() {
+  var poSheet = getPoMasterSheet_();
+  var poValues = poSheet.getDataRange().getValues();
+  if (poValues.length <= 1) {
+    return { stats: {}, list: [] };
+  }
+
+  var headers = poValues[0];
+  var headerIndex = buildHeaderIndex_(headers);
+  var list = [];
+  var stats = {};
+
+  for (var i = 1; i < poValues.length; i++) {
+    var row = poValues[i];
+    var status = row[headerIndex['status_stage']] || 'Unknown';
+    stats[status] = (stats[status] || 0) + 1;
+
+    list.push({
+      po_id: row[headerIndex['po_id']],
+      po_date: row[headerIndex['po_date']],
+      supplier_name: row[headerIndex['supplier_name']],
+      po_amount_foreign: row[headerIndex['po_amount_foreign']],
+      currency: row[headerIndex['currency']],
+      status_stage: row[headerIndex['status_stage']],
+      eta_date: row[headerIndex['eta_date']],
+      wh_received_date: row[headerIndex['wh_received_date']]
+    });
+  }
+
+  return {
+    stats: stats,
+    list: list
   };
 }
