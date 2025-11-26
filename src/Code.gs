@@ -9,6 +9,33 @@ function doGet(e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/**
+ * Fetch all PO rows for the simple dashboard table.
+ * Reads the "POs" sheet (header row at row 1) and maps to plain objects
+ * so the client can render them directly. Columns are assumed to be:
+ * PO ID | Date | Supplier | Amount | Status | ETA | WH Received
+ */
+function getAllPOsForDashboard() {
+  var sheet = getSheet_('POs');
+  var values = sheet.getDataRange().getValues();
+  if (values.length <= 1) {
+    return [];
+  }
+
+  var dataRows = values.slice(1);
+  return dataRows.map(function (row) {
+    return {
+      poId: row[0],
+      date: row[1],
+      supplier: row[2],
+      amount: row[3],
+      status: row[4],
+      eta: row[5],
+      whReceived: row[6]
+    };
+  });
+}
+
 // Helper to get a sheet by name from the active spreadsheet
 function getSheet_(name) {
   var ss = SpreadsheetApp.getActive();
