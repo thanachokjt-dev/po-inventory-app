@@ -356,15 +356,14 @@
     </div>
 
     <script>
-      // Cache for supplier and product data
+      // Global caches/state shared across tabs
       var supplierCache = [];
       var productCache = [];
-      // Dashboard state is loaded lazily when the tab is opened
       var dashboardData = null;
       var dashboardLoaded = false;
       var activeTab = 'create';
 
-      // Header fields used in PO_MASTER
+      // Header fields used when collecting PO header values
       var headerFields = [
         'po_id','po_title','po_date','requester','po_owner','supplier_code','supplier_name','currency','incoterm','ship_mode','po_amount_foreign','fx_rate_ref','po_amount_thb','payment_terms_text','pay1_type','pay1_pct','pay1_amount','pay1_due_date','pay1_paid_date','pay1_slip_link','pay2_type','pay2_pct','pay2_amount','pay2_due_date','pay2_paid_date','pay2_slip_link','pay3_type','pay3_pct','pay3_amount','pay3_due_date','pay3_paid_date','pay3_slip_link','status_stage','status_detail','etd_date','eta_date','wh_received_date','next_action_what','next_action_who','next_action_when','po_pdf_link','invoice_link','duty_tax_bill_link','remark'
       ];
@@ -373,9 +372,12 @@
         loadSuppliers();
         loadProducts();
         addItemRow();
-        document.getElementById('supplier_code').addEventListener('change', onSupplierChange);
+        var supplierSelect = document.getElementById('supplier_code');
+        if (supplierSelect) {
+          supplierSelect.addEventListener('change', onSupplierChange);
+        }
 
-        // Preload dashboard data so it is ready the first time the tab is opened.
+        // Optionally preload the dashboard data so the first open is instant
         google.script.run
           .withSuccessHandler(function(pos) {
             console.log('Initial dashboard data loaded (raw):', pos);
@@ -397,12 +399,14 @@
         ['create','dashboard','receiving'].forEach(function(name){
           var btn = document.getElementById('tab-' + name);
           var content = document.getElementById('tab-content-' + name);
-          if (name === tab) {
-            btn.classList.add('active');
-            content.classList.add('active');
-          } else {
-            btn.classList.remove('active');
-            content.classList.remove('active');
+          if (btn && content) {
+            if (name === tab) {
+              btn.classList.add('active');
+              content.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+              content.classList.remove('active');
+            }
           }
         });
 
@@ -423,6 +427,7 @@
         google.script.run.withSuccessHandler(function(data) {
           supplierCache = data || [];
           var select = document.getElementById('supplier_code');
+          if (!select) return;
           select.innerHTML = '<option value="">--Select--</option>';
           supplierCache.forEach(function(s) {
             var opt = document.createElement('option');
@@ -460,7 +465,8 @@
 
       function clearSupplierFields() {
         ['supplier_name','currency','incoterm','ship_mode','payment_terms_text','bank_detail'].forEach(function(id){
-          document.getElementById(id).value = '';
+          var el = document.getElementById(id);
+          if (el) el.value = '';
         });
       }
 
@@ -643,118 +649,118 @@
           });
         }
 
+        function handleBlur() {
+          setTimeout(function(){ hideSuggestions(); }, 150);
+          var p = findProductBySku(skuInput.value.trim());
+          if (p) {
+            applyProductToRow(row, p);
+          }
+        }
+
         skuInput.addEventListener('input', handleInput);
         skuInput.addEventListener('keydown', handleKeydown);
-        skuInput.addEventListener('focus', handleInput);
-        skuInput.addEventListener('blur', function(){
-          setTimeout(function(){ hideSuggestions(); }, 150);
-          var product = findProductBySku(skuInput.value);
-          if (product) {
-            applyProductToRow(row, product);
-          }
-        });
+        skuInput.addEventListener('blur', handleBlur);
       }
 
       function applyProductToRow(row, product) {
+        if (!row || !product) return;
         var productInput = row.querySelector('td:nth-child(3) input');
         var variantInput = row.querySelector('td:nth-child(4) input');
         var img = row.querySelector('td:nth-child(5) img');
-        productInput.value = product && product.productName ? product.productName : '';
-        var variantTitle = product ? (product.fullName || [product.color || '', product.size || ''].join(' ').trim()) : '';
-        variantInput.value = variantTitle;
-        img.src = product ? (product.variantImage || product.productImage || '') : '';
+        productInput.value = product.productName || '';
+        var variantTitle = product.fullName || '';
+        if (!variantTitle) {
+          var combo = ((product.color || '') + ' ' + (product.size || '')).trim();
+          variantTitle = combo;
+        }
+        variantInput.value = variantTitle || '';
+        var url = product.variantImage || product.productImage || '';
+        img.src = url;
+        img.alt = url ? 'Product image' : 'No image';
       }
 
       function applySkuToRow(row, sku) {
+        if (!sku) return;
         var product = findProductBySku(sku);
         if (product) {
           applyProductToRow(row, product);
-        } else {
-          applyProductToRow(row, null);
-          var skuInput = row.querySelector('td:nth-child(2) input');
-          if (skuInput.value) {
-            console.warn('Product not found for SKU:', skuInput.value);
-          }
         }
-        updateLineAmount(row);
       }
 
       function updateLineAmount(row) {
         var qty = parseFloat(row.querySelector('td:nth-child(6) input').value) || 0;
         var price = parseFloat(row.querySelector('td:nth-child(7) input').value) || 0;
-        var amountInput = row.querySelector('td:nth-child(8) input');
-        amountInput.value = (qty * price).toFixed(2);
+        row.querySelector('td:nth-child(8) input').value = (qty * price).toFixed(2);
       }
 
       function refreshLineNumbers() {
-        var rows = document.querySelectorAll('#items-body tr');
-        rows.forEach(function(r, idx) {
-          r.querySelector('td:first-child').textContent = idx + 1;
+        var tbody = document.getElementById('items-body');
+        Array.from(tbody.children).forEach(function(tr, idx){
+          tr.querySelector('td:nth-child(1)').textContent = idx + 1;
         });
       }
 
       // ---------------- Save / Load ----------------
-      function collectHeader() {
-        var header = {};
-        headerFields.forEach(function(name) {
-          var el = document.getElementById(name);
-          header[name] = el ? el.value : '';
+      function getHeaderData() {
+        var data = {};
+        headerFields.forEach(function(field){
+          var el = document.getElementById(field);
+          if (el) {
+            data[field] = el.value;
+          }
         });
-        return header;
+        return data;
       }
 
-      function collectItems() {
-        var rows = document.querySelectorAll('#items-body tr');
-        var items = [];
-        rows.forEach(function(row, idx) {
-          var item = {
+      function getItemsData(poId) {
+        var tbody = document.getElementById('items-body');
+        return Array.from(tbody.children).map(function(tr, idx){
+          var cells = tr.querySelectorAll('td');
+          return {
+            po_id: poId,
             line_no: idx + 1,
-            sku: row.querySelector('td:nth-child(2) input').value,
-            product_title: row.querySelector('td:nth-child(3) input').value,
-            variant_title: row.querySelector('td:nth-child(4) input').value,
-            image_url: row.querySelector('td:nth-child(5) img').src,
-            qty: parseFloat(row.querySelector('td:nth-child(6) input').value) || 0,
-            unit_price: parseFloat(row.querySelector('td:nth-child(7) input').value) || 0,
-            line_amount: parseFloat(row.querySelector('td:nth-child(8) input').value) || 0,
+            sku: cells[1].querySelector('input').value,
+            product_title: cells[2].querySelector('input').value,
+            variant_title: cells[3].querySelector('input').value,
+            image_url: cells[4].querySelector('img').src,
+            qty: cells[5].querySelector('input').value,
+            unit_price: cells[6].querySelector('input').value,
+            line_amount: cells[7].querySelector('input').value,
             currency: document.getElementById('currency').value,
-            remark: row.querySelector('td:nth-child(9) input').value
+            remark: cells[8].querySelector('input').value
           };
-          items.push(item);
         });
-        return items;
       }
 
       function savePo() {
-        setMessage('');
-        var header = collectHeader();
-        if (!header.po_id) {
-          alert('PO ID is required');
+        var poId = document.getElementById('po_id').value;
+        if (!poId) {
+          alert('PO ID is required to save.');
           return;
         }
-        var items = collectItems();
-        header.po_amount_foreign = parseFloat(header.po_amount_foreign) || '';
-        header.fx_rate_ref = parseFloat(header.fx_rate_ref) || '';
-        header.po_amount_thb = parseFloat(header.po_amount_thb) || '';
-
+        var header = getHeaderData();
+        var items = getItemsData(poId);
         var payload = { header: header, items: items };
-        google.script.run.withSuccessHandler(function(){
-          setMessage('PO saved');
-        }).withFailureHandler(function(err){
-          alert('Save failed: ' + err);
-        }).savePoWithItems(payload);
+        google.script.run
+          .withSuccessHandler(function(){
+            setMessage('PO saved successfully', false);
+          })
+          .withFailureHandler(function(err){
+            setMessage('Error saving PO: ' + (err && err.message ? err.message : err), true);
+          })
+          .savePoWithItems(payload);
       }
 
       function loadPo() {
-        setMessage('');
         var poId = document.getElementById('po_id_to_load').value;
         if (!poId) {
           alert('Please enter a PO ID to load');
           return;
         }
         google.script.run
-          .withSuccessHandler(function(data){
-            fillFormFromPo(data);
-            setMessage('PO loaded');
+          .withSuccessHandler(function(po){
+            fillFormFromPo(po);
+            setMessage('PO loaded: ' + poId, false);
           })
           .withFailureHandler(function(err){
             console.error('Error loading PO:', err);
@@ -763,36 +769,29 @@
           .getPoWithItems(poId);
       }
 
-      function fillFormFromPo(data) {
-        if (!data || !data.header) {
+      function fillFormFromPo(po) {
+        if (!po || !po.header) {
           alert('PO not found');
           return;
         }
-        headerFields.forEach(function(name) {
-          var el = document.getElementById(name);
-          if (el) {
-            el.value = data.header[name] || '';
+        headerFields.forEach(function(field){
+          if (po.header.hasOwnProperty(field)) {
+            var el = document.getElementById(field);
+            if (el) el.value = po.header[field] || '';
           }
         });
-        // Refresh supplier info if code exists
-        if (data.header.supplier_code) {
-          document.getElementById('supplier_code').value = data.header.supplier_code;
-          onSupplierChange();
-        }
 
-        // Build items table
         var tbody = document.getElementById('items-body');
         tbody.innerHTML = '';
-        if (data.items && data.items.length) {
-          data.items.forEach(function(item){ addItemRow(item); });
-        } else {
+        (po.items || []).forEach(function(item){
+          addItemRow(item);
+        });
+        if (!po.items || !po.items.length) {
           addItemRow();
         }
-        refreshLineNumbers();
       }
 
       // ---------------- Dashboard ----------------
-      // Track dashboard state so we only fetch once unless reloaded.
       function onDashboardTabShown() {
         if (!dashboardLoaded) {
           loadDashboard();
@@ -801,7 +800,6 @@
         }
       }
 
-      // Pull dashboard rows from Apps Script and cache locally.
       function loadDashboard() {
         google.script.run
           .withSuccessHandler(function (data) {
@@ -818,31 +816,26 @@
           .debugGetAllPOsForDashboard_Once();
       }
 
-      // Build status filter options based on the loaded data
       function buildDashboardStatusFilter() {
         var statusSelect = document.getElementById('dashboard-status-filter');
         var searchInput = document.getElementById('dashboard-search');
         if (!statusSelect) return;
 
-        var statusCounts = {};
-        (dashboardData || []).forEach(function (po) {
-          var label = po.status || 'Unknown';
-          statusCounts[label] = (statusCounts[label] || 0) + 1;
-        });
+        statusSelect.innerHTML = '';
+        var optAll = document.createElement('option');
+        optAll.value = 'All';
+        optAll.textContent = 'All';
+        statusSelect.appendChild(optAll);
+        var optClosed = document.createElement('option');
+        optClosed.value = 'Closed';
+        optClosed.textContent = 'Closed';
+        statusSelect.appendChild(optClosed);
+        statusSelect.value = 'Closed';
 
-        statusSelect.innerHTML = '<option value="All">All</option>';
-        Object.keys(statusCounts).forEach(function (status) {
-          var opt = document.createElement('option');
-          opt.value = status;
-          opt.textContent = status + ' (' + statusCounts[status] + ')';
-          statusSelect.appendChild(opt);
-        });
-
-        // Bind filter/search events only once
         if (!statusSelect.dataset.bound) {
           statusSelect.addEventListener('change', applyDashboardFilters);
           if (searchInput) {
-            searchInput.addEventListener('keydown', function (evt) {
+            searchInput.addEventListener('keydown', function(evt) {
               if (evt.key === 'Enter') {
                 evt.preventDefault();
                 onDashboardSearch();
@@ -853,14 +846,12 @@
         }
       }
 
-      // Render the filtered rows into the dashboard table
       function renderDashboard(rows) {
         var tbody = document.getElementById('poTableBody');
         var totalEl = document.getElementById('totalPOs');
         if (!tbody || !totalEl) return;
 
         tbody.innerHTML = '';
-
         if (!rows || !rows.length) {
           var trEmpty = document.createElement('tr');
           var tdEmpty = document.createElement('td');
@@ -872,41 +863,53 @@
           return;
         }
 
-        rows.forEach(function (po) {
+        rows.slice(0, 10).forEach(function(po) {
           var tr = document.createElement('tr');
           tr.innerHTML =
-            '<td>' + escapeHtml(po.poId || 'null') + '</td>' +
-            '<td>' + (formatDate(po.date) || 'null') + '</td>' +
-            '<td>' + escapeHtml(po.supplier || 'null') + '</td>' +
-            '<td>' + escapeHtml(formatAmount(po.amount, po.currency) || 'null') + '</td>' +
-            '<td>' + escapeHtml(po.status || 'null') + '</td>' +
-            '<td>' + (formatDate(po.eta) || 'null') + '</td>' +
-            '<td>' + (formatDate(po.whReceived) || 'null') + '</td>';
+            '<td>' + escapeHtml(po.poId || '') + '</td>' +
+            '<td>' + formatDate(po.date) + '</td>' +
+            '<td>' + escapeHtml(po.supplier || '') + '</td>' +
+            '<td>' + escapeHtml(formatAmount(po.amount, po.currency)) + '</td>' +
+            '<td>' + escapeHtml(po.status || '') + '</td>' +
+            '<td>' + formatDate(po.eta) + '</td>' +
+            '<td>' + formatDate(po.whReceived) + '</td>';
           tbody.appendChild(tr);
         });
 
         totalEl.textContent = String(rows.length);
       }
 
-      // Apply filters then render the table (temporarily renders all rows for debugging)
       function applyDashboardFilters() {
-        if (!dashboardData) {
+        if (dashboardData === null) {
           console.log('applyDashboardFilters: no dashboardData');
           return;
         }
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        var statusFilter = statusSelect ? statusSelect.value : 'All';
+        var searchTerm = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
 
-        console.log('applyDashboardFilters: using rows =', dashboardData.length);
+        var filtered = dashboardData.filter(function(po) {
+          var okStatus = true;
+          if (statusFilter === 'Closed') {
+            okStatus = (po.status || '').toLowerCase() === 'closed';
+          }
+          var okSearch = true;
+          if (searchTerm) {
+            var text = ((po.poId || '') + ' ' + (po.supplier || '')).toLowerCase();
+            okSearch = text.indexOf(searchTerm) !== -1;
+          }
+          return okStatus && okSearch;
+        });
 
-        // For now, ignore status/search filters and just render everything
-        renderDashboard(dashboardData);
+        console.log('applyDashboardFilters: filtered rows =', filtered.length);
+        renderDashboard(filtered);
       }
 
-      // Trigger filtering when the user clicks Search
       function onDashboardSearch() {
         applyDashboardFilters();
       }
 
-      // Clear search text and reset status filter to show all rows
       function onDashboardClear() {
         var statusSelect = document.getElementById('dashboard-status-filter');
         var searchInput = document.getElementById('dashboard-search');
@@ -915,7 +918,7 @@
         applyDashboardFilters();
       }
 
-      // Escape HTML to avoid rendering issues in table cells
+      // ---------------- Helpers ----------------
       function escapeHtml(s) {
         if (s == null) return '';
         return String(s)
@@ -924,20 +927,18 @@
           .replace(/>/g, '&gt;');
       }
 
-      // Friendly date formatting; if parsing fails, return raw text
       function formatDate(v) {
         if (!v) return '';
         var d = new Date(v);
         if (!isNaN(d.getTime())) {
-          return d.toISOString().slice(0, 10); // yyyy-mm-dd
+          return d.toISOString().slice(0, 10);
         }
         return escapeHtml(v);
       }
 
-      // Combine amount + currency for display
       function formatAmount(amount, currency) {
         if (amount == null || amount === '') return '';
-        return amount + (currency ? (' ' + currency) : '');
+        return amount + (currency ? ' ' + currency : '');
       }
     </script>
   </body>
