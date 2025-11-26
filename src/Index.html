@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top" />
+    <style>
+      body { font-family: Arial, sans-serif; margin: 20px; }
+      h1 { margin-bottom: 12px; }
+      .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+      .tab-btn { padding: 8px 12px; border: 1px solid #ccc; background: #f5f5f5; cursor: pointer; border-radius: 4px; }
+      .tab-btn.active { background: #4285f4; color: white; border-color: #4285f4; }
+      .tab-content { display: none; }
+      .tab-content.active { display: block; }
+      .section { border: 1px solid #ccc; padding: 12px; margin-top: 16px; border-radius: 6px; }
+      .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px 16px; }
+      label { display: block; font-weight: bold; margin-bottom: 4px; }
+      input[type="text"], input[type="date"], input[type="number"], select, textarea { width: 100%; box-sizing: border-box; padding: 6px; }
+      textarea { min-height: 60px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+      th, td { border: 1px solid #ccc; padding: 6px; text-align: left; vertical-align: top; }
+      th { background: #f5f5f5; }
+      .actions { margin-top: 12px; }
+      .img-preview { width: 60px; height: 60px; object-fit: contain; border: 1px solid #ddd; }
+      .readonly { background: #f9f9f9; }
+      .inline { display: inline-block; margin-right: 8px; }
+      .sku-cell { position: relative; }
+      .suggestion-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; z-index: 10; display: none; }
+      .suggestion-item { padding: 6px; cursor: pointer; }
+      .suggestion-item:hover, .suggestion-item.active { background: #e8f0fe; }
+      .dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+      .card { border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; }
+      .card h4 { margin: 0 0 6px 0; }
+      .filter-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+      .filter-row label { margin: 0; font-weight: normal; }
+    </style>
+  </head>
+  <body>
+    <h1>PO System</h1>
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('create')" id="tab-create">Create / Edit PO</button>
+      <button class="tab-btn" onclick="switchTab('dashboard')" id="tab-dashboard">Dashboard</button>
+      <button class="tab-btn" onclick="switchTab('receiving')" id="tab-receiving">Receiving</button>
+    </div>
+
+    <!-- Create / Edit Tab -->
+    <div class="tab-content active" id="tab-content-create">
+      <div class="section">
+        <div class="form-grid">
+          <div>
+            <label for="po_id">PO ID</label>
+            <input type="text" id="po_id" />
+          </div>
+          <div>
+            <label for="po_title">PO Title</label>
+            <input type="text" id="po_title" />
+          </div>
+          <div>
+            <label for="po_date">PO Date</label>
+            <input type="date" id="po_date" />
+          </div>
+          <div>
+            <label for="requester">Requester</label>
+            <input type="text" id="requester" />
+          </div>
+          <div>
+            <label for="po_owner">PO Owner</label>
+            <input type="text" id="po_owner" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Supplier</h3>
+        <div class="form-grid">
+          <div>
+            <label for="supplier_code">Supplier Code</label>
+            <select id="supplier_code"></select>
+          </div>
+          <div>
+            <label for="supplier_name">Supplier Name</label>
+            <input type="text" id="supplier_name" class="readonly" readonly />
+          </div>
+          <div>
+            <label for="currency">Currency</label>
+            <input type="text" id="currency" class="readonly" readonly />
+          </div>
+          <div>
+            <label for="incoterm">Incoterm</label>
+            <input type="text" id="incoterm" class="readonly" readonly />
+          </div>
+          <div>
+            <label for="ship_mode">Ship Mode</label>
+            <input type="text" id="ship_mode" class="readonly" readonly />
+          </div>
+          <div>
+            <label for="payment_terms_text">Payment Terms</label>
+            <textarea id="payment_terms_text" class="readonly" readonly></textarea>
+          </div>
+          <div>
+            <label for="bank_detail">Bank Detail</label>
+            <textarea id="bank_detail" class="readonly" readonly></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Totals</h3>
+        <div class="form-grid">
+          <div>
+            <label for="po_amount_foreign">PO Amount (Foreign)</label>
+            <input type="number" id="po_amount_foreign" step="0.01" />
+          </div>
+          <div>
+            <label for="fx_rate_ref">FX Rate Ref</label>
+            <input type="number" id="fx_rate_ref" step="0.0001" />
+          </div>
+          <div>
+            <label for="po_amount_thb">PO Amount (THB)</label>
+            <input type="number" id="po_amount_thb" step="0.01" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Payment Terms</h3>
+        <div class="form-grid">
+          <div>
+            <label for="pay1_type">Pay1 Type</label>
+            <input type="text" id="pay1_type" />
+          </div>
+          <div>
+            <label for="pay1_pct">Pay1 %</label>
+            <input type="number" id="pay1_pct" step="0.01" />
+          </div>
+          <div>
+            <label for="pay1_amount">Pay1 Amount</label>
+            <input type="number" id="pay1_amount" step="0.01" />
+          </div>
+          <div>
+            <label for="pay1_due_date">Pay1 Due Date</label>
+            <input type="date" id="pay1_due_date" />
+          </div>
+          <div>
+            <label for="pay1_paid_date">Pay1 Paid Date</label>
+            <input type="date" id="pay1_paid_date" />
+          </div>
+          <div>
+            <label for="pay1_slip_link">Pay1 Slip Link</label>
+            <input type="text" id="pay1_slip_link" />
+          </div>
+
+          <div>
+            <label for="pay2_type">Pay2 Type</label>
+            <input type="text" id="pay2_type" />
+          </div>
+          <div>
+            <label for="pay2_pct">Pay2 %</label>
+            <input type="number" id="pay2_pct" step="0.01" />
+          </div>
+          <div>
+            <label for="pay2_amount">Pay2 Amount</label>
+            <input type="number" id="pay2_amount" step="0.01" />
+          </div>
+          <div>
+            <label for="pay2_due_date">Pay2 Due Date</label>
+            <input type="date" id="pay2_due_date" />
+          </div>
+          <div>
+            <label for="pay2_paid_date">Pay2 Paid Date</label>
+            <input type="date" id="pay2_paid_date" />
+          </div>
+          <div>
+            <label for="pay2_slip_link">Pay2 Slip Link</label>
+            <input type="text" id="pay2_slip_link" />
+          </div>
+
+          <div>
+            <label for="pay3_type">Pay3 Type</label>
+            <input type="text" id="pay3_type" />
+          </div>
+          <div>
+            <label for="pay3_pct">Pay3 %</label>
+            <input type="number" id="pay3_pct" step="0.01" />
+          </div>
+          <div>
+            <label for="pay3_amount">Pay3 Amount</label>
+            <input type="number" id="pay3_amount" step="0.01" />
+          </div>
+          <div>
+            <label for="pay3_due_date">Pay3 Due Date</label>
+            <input type="date" id="pay3_due_date" />
+          </div>
+          <div>
+            <label for="pay3_paid_date">Pay3 Paid Date</label>
+            <input type="date" id="pay3_paid_date" />
+          </div>
+          <div>
+            <label for="pay3_slip_link">Pay3 Slip Link</label>
+            <input type="text" id="pay3_slip_link" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Status & Timeline</h3>
+        <div class="form-grid">
+          <div>
+            <label for="status_stage">Status Stage</label>
+            <select id="status_stage">
+              <option value="Draft">Draft</option>
+              <option value="In production">In production</option>
+              <option value="Ready to ship">Ready to ship</option>
+              <option value="In transit">In transit</option>
+              <option value="At customs">At customs</option>
+              <option value="In warehouse">In warehouse</option>
+              <option value="Closed">Closed</option>
+            </select>
+          </div>
+          <div>
+            <label for="status_detail">Status Detail</label>
+            <textarea id="status_detail"></textarea>
+          </div>
+          <div>
+            <label for="etd_date">ETD Date</label>
+            <input type="date" id="etd_date" />
+          </div>
+          <div>
+            <label for="eta_date">ETA Date</label>
+            <input type="date" id="eta_date" />
+          </div>
+          <div>
+            <label for="wh_received_date">WH Received Date</label>
+            <input type="date" id="wh_received_date" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Next Action</h3>
+        <div class="form-grid">
+          <div>
+            <label for="next_action_what">What</label>
+            <input type="text" id="next_action_what" />
+          </div>
+          <div>
+            <label for="next_action_who">Who</label>
+            <input type="text" id="next_action_who" />
+          </div>
+          <div>
+            <label for="next_action_when">When</label>
+            <input type="date" id="next_action_when" />
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>Documents</h3>
+        <div class="form-grid">
+          <div>
+            <label for="po_pdf_link">PO PDF Link</label>
+            <input type="text" id="po_pdf_link" />
+          </div>
+          <div>
+            <label for="invoice_link">Invoice Link</label>
+            <input type="text" id="invoice_link" />
+          </div>
+          <div>
+            <label for="duty_tax_bill_link">Duty Tax Bill Link</label>
+            <input type="text" id="duty_tax_bill_link" />
+          </div>
+          <div>
+            <label for="remark">Remark</label>
+            <textarea id="remark"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h3>PO Items</h3>
+        <div class="actions">
+          <button type="button" onclick="addItemRow()">Add line</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Line</th>
+              <th>SKU</th>
+              <th>Product Title</th>
+              <th>Variant Title</th>
+              <th>Image</th>
+              <th>Qty</th>
+              <th>Unit Price</th>
+              <th>Line Amount</th>
+              <th>Remark</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="items-body"></tbody>
+        </table>
+      </div>
+
+      <div class="section">
+        <h3>Save / Load</h3>
+        <div class="actions">
+          <button type="button" onclick="savePo()">Save PO</button>
+        </div>
+        <div style="margin-top:10px;">
+          <label for="po_id_to_load"><strong>Load PO ID:</strong></label>
+          <input type="text" id="po_id_to_load" />
+          <button type="button" onclick="loadPo()">Load</button>
+        </div>
+        <div id="message" style="margin-top:10px;color:green;"></div>
+      </div>
+    </div>
+
+    <!-- Dashboard Tab -->
+    <div class="tab-content" id="tab-content-dashboard">
+      <div class="section">
+        <h3>Dashboard Overview</h3>
+        <div class="dashboard-cards">
+          <div class="card">
+            <h4>Total POs</h4>
+            <div id="totalPOs">0</div>
+          </div>
+        </div>
+        <div class="filter-row">
+          <label>Status filter:</label>
+          <select id="dashboard-status-filter"></select>
+          <label>Search:</label>
+          <input type="text" id="dashboard-search" placeholder="Search by PO ID or Supplier" />
+          <button type="button" id="dashboard-search-btn" onclick="onDashboardSearch()">Search</button>
+          <button type="button" id="dashboard-clear-btn" onclick="onDashboardClear()">Clear</button>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>PO ID</th>
+              <th>Date</th>
+              <th>Supplier</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>ETA</th>
+              <th>WH Received</th>
+            </tr>
+          </thead>
+          <tbody id="poTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Receiving Tab -->
+    <div class="tab-content" id="tab-content-receiving">
+      <div class="section">
+        <h3>Receiving</h3>
+        <p>Receiving workflows can be added here. Existing create/edit features remain available on the main tab.</p>
+      </div>
+    </div>
+
+    <script>
+      // Global caches/state shared across tabs
+      var supplierCache = [];
+      var productCache = [];
+      var dashboardData = null;
+      var dashboardLoaded = false;
+      var activeTab = 'create';
+
+      // Header fields used when collecting PO header values
+      var headerFields = [
+        'po_id','po_title','po_date','requester','po_owner','supplier_code','supplier_name','currency','incoterm','ship_mode','po_amount_foreign','fx_rate_ref','po_amount_thb','payment_terms_text','pay1_type','pay1_pct','pay1_amount','pay1_due_date','pay1_paid_date','pay1_slip_link','pay2_type','pay2_pct','pay2_amount','pay2_due_date','pay2_paid_date','pay2_slip_link','pay3_type','pay3_pct','pay3_amount','pay3_due_date','pay3_paid_date','pay3_slip_link','status_stage','status_detail','etd_date','eta_date','wh_received_date','next_action_what','next_action_who','next_action_when','po_pdf_link','invoice_link','duty_tax_bill_link','remark'
+      ];
+
+      document.addEventListener('DOMContentLoaded', function() {
+        loadSuppliers();
+        loadProducts();
+        addItemRow();
+        var supplierSelect = document.getElementById('supplier_code');
+        if (supplierSelect) {
+          supplierSelect.addEventListener('change', onSupplierChange);
+        }
+
+        // Optionally preload the dashboard data so the first open is instant
+        google.script.run
+          .withSuccessHandler(function(pos) {
+            console.log('Initial dashboard data loaded (raw):', pos);
+            console.log('Initial dashboard data length:', pos && pos.length);
+            dashboardData = Array.isArray(pos) ? pos : [];
+            dashboardLoaded = true;
+            buildDashboardStatusFilter();
+            applyDashboardFilters();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Error loading dashboard:', err);
+            alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
+          })
+          .debugGetAllPOsForDashboard_Once();
+      });
+
+      function switchTab(tab) {
+        activeTab = tab;
+        ['create','dashboard','receiving'].forEach(function(name){
+          var btn = document.getElementById('tab-' + name);
+          var content = document.getElementById('tab-content-' + name);
+          if (btn && content) {
+            if (name === tab) {
+              btn.classList.add('active');
+              content.classList.add('active');
+            } else {
+              btn.classList.remove('active');
+              content.classList.remove('active');
+            }
+          }
+        });
+
+        if (tab === 'dashboard') {
+          onDashboardTabShown();
+        }
+      }
+
+      function setMessage(text, isError) {
+        var el = document.getElementById('message');
+        if (!el) return;
+        el.style.color = isError ? 'red' : 'green';
+        el.textContent = text || '';
+      }
+
+      // ---------------- Supplier helpers ----------------
+      function loadSuppliers() {
+        google.script.run.withSuccessHandler(function(data) {
+          supplierCache = data || [];
+          var select = document.getElementById('supplier_code');
+          if (!select) return;
+          select.innerHTML = '<option value="">--Select--</option>';
+          supplierCache.forEach(function(s) {
+            var opt = document.createElement('option');
+            opt.value = s.supplier_code;
+            opt.textContent = s.supplier_code + ' - ' + s.supplier_name;
+            select.appendChild(opt);
+          });
+        }).withFailureHandler(function(err){
+          alert('Failed to load suppliers: ' + err);
+        }).listSuppliers();
+      }
+
+      function onSupplierChange() {
+        var code = document.getElementById('supplier_code').value;
+        if (!code) {
+          clearSupplierFields();
+          return;
+        }
+        google.script.run.withSuccessHandler(function(supplier) {
+          if (!supplier) {
+            alert('Supplier not found');
+            clearSupplierFields();
+            return;
+          }
+          document.getElementById('supplier_name').value = supplier.supplier_name || '';
+          document.getElementById('currency').value = supplier.currency || '';
+          document.getElementById('incoterm').value = supplier.incoterm || '';
+          document.getElementById('ship_mode').value = supplier.ship_mode || '';
+          document.getElementById('payment_terms_text').value = supplier.payment_terms_text || '';
+          document.getElementById('bank_detail').value = supplier.bank_detail || '';
+        }).withFailureHandler(function(err){
+          alert('Failed to fetch supplier: ' + err);
+        }).getSupplierByCode(code);
+      }
+
+      function clearSupplierFields() {
+        ['supplier_name','currency','incoterm','ship_mode','payment_terms_text','bank_detail'].forEach(function(id){
+          var el = document.getElementById(id);
+          if (el) el.value = '';
+        });
+      }
+
+      // ---------------- Product helpers ----------------
+      function loadProducts() {
+        google.script.run.withSuccessHandler(function(products) {
+          productCache = products || [];
+        }).withFailureHandler(function(err){
+          alert('Failed to load products: ' + err);
+        }).listProductsForUi();
+      }
+
+      function findProductBySku(sku) {
+        return productCache.find(function(p) { return p.sku == sku; }) || null;
+      }
+
+      function findProductsByQuery(query) {
+        if (!query) return productCache;
+        var q = query.toLowerCase();
+        return productCache.filter(function(p){
+          return (p.sku && p.sku.toLowerCase().indexOf(q) !== -1) ||
+                 (p.productName && p.productName.toLowerCase().indexOf(q) !== -1) ||
+                 (p.fullName && p.fullName.toLowerCase().indexOf(q) !== -1);
+        });
+      }
+
+      // ---------------- Items table ----------------
+      function addItemRow(item) {
+        var tbody = document.getElementById('items-body');
+        var row = document.createElement('tr');
+
+        var lineCell = document.createElement('td');
+        lineCell.textContent = tbody.children.length + 1;
+        row.appendChild(lineCell);
+
+        var skuCell = document.createElement('td');
+        skuCell.className = 'sku-cell';
+        var skuInput = document.createElement('input');
+        skuInput.type = 'text';
+        skuInput.value = item && item.sku ? item.sku : '';
+        skuCell.appendChild(skuInput);
+        var suggestionBox = document.createElement('div');
+        suggestionBox.className = 'suggestion-list';
+        skuCell.appendChild(suggestionBox);
+        row.appendChild(skuCell);
+
+        var productCell = document.createElement('td');
+        var productInput = document.createElement('input');
+        productInput.type = 'text';
+        productInput.readOnly = true;
+        productInput.className = 'readonly';
+        productInput.value = item && item.product_title ? item.product_title : '';
+        productCell.appendChild(productInput);
+        row.appendChild(productCell);
+
+        var variantCell = document.createElement('td');
+        var variantInput = document.createElement('input');
+        variantInput.type = 'text';
+        variantInput.readOnly = true;
+        variantInput.className = 'readonly';
+        variantInput.value = item && item.variant_title ? item.variant_title : '';
+        variantCell.appendChild(variantInput);
+        row.appendChild(variantCell);
+
+        var imgCell = document.createElement('td');
+        var img = document.createElement('img');
+        img.className = 'img-preview';
+        img.src = item && item.image_url ? item.image_url : '';
+        img.alt = 'No image';
+        imgCell.appendChild(img);
+        row.appendChild(imgCell);
+
+        var qtyCell = document.createElement('td');
+        var qtyInput = document.createElement('input');
+        qtyInput.type = 'number';
+        qtyInput.step = '0.01';
+        qtyInput.value = item && item.qty ? item.qty : '';
+        qtyInput.oninput = function() { updateLineAmount(row); };
+        qtyCell.appendChild(qtyInput);
+        row.appendChild(qtyCell);
+
+        var priceCell = document.createElement('td');
+        var priceInput = document.createElement('input');
+        priceInput.type = 'number';
+        priceInput.step = '0.01';
+        priceInput.value = item && item.unit_price ? item.unit_price : '';
+        priceInput.oninput = function() { updateLineAmount(row); };
+        priceCell.appendChild(priceInput);
+        row.appendChild(priceCell);
+
+        var amountCell = document.createElement('td');
+        var amountInput = document.createElement('input');
+        amountInput.type = 'number';
+        amountInput.readOnly = true;
+        amountInput.className = 'readonly';
+        amountInput.value = item && item.line_amount ? item.line_amount : '';
+        amountCell.appendChild(amountInput);
+        row.appendChild(amountCell);
+
+        var remarkCell = document.createElement('td');
+        var remarkInput = document.createElement('input');
+        remarkInput.type = 'text';
+        remarkInput.value = item && item.remark ? item.remark : '';
+        remarkCell.appendChild(remarkInput);
+        row.appendChild(remarkCell);
+
+        var actionCell = document.createElement('td');
+        var removeBtn = document.createElement('button');
+        removeBtn.textContent = 'Remove';
+        removeBtn.type = 'button';
+        removeBtn.onclick = function() {
+          row.remove();
+          refreshLineNumbers();
+        };
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+
+        tbody.appendChild(row);
+        setupSkuAutocomplete(row);
+        applySkuToRow(row, skuInput.value);
+        updateLineAmount(row);
+      }
+
+      function setupSkuAutocomplete(row) {
+        var skuInput = row.querySelector('td:nth-child(2) input');
+        var suggestionBox = row.querySelector('.suggestion-list');
+        var activeIndex = -1;
+
+        function hideSuggestions() {
+          suggestionBox.style.display = 'none';
+          activeIndex = -1;
+        }
+
+        function renderSuggestions(list) {
+          suggestionBox.innerHTML = '';
+          if (!list.length) {
+            hideSuggestions();
+            return;
+          }
+          list.forEach(function(p, idx){
+            var div = document.createElement('div');
+            div.className = 'suggestion-item' + (idx === activeIndex ? ' active' : '');
+            var detail = p.fullName || ((p.color || '') + ' ' + (p.size || '')).trim();
+            div.textContent = p.sku + ' — ' + p.productName + (detail ? ' (' + detail + ')' : '');
+            div.onclick = function(){ selectProduct(p); };
+            suggestionBox.appendChild(div);
+          });
+          suggestionBox.style.display = 'block';
+        }
+
+        function selectProduct(product) {
+          skuInput.value = product.sku || '';
+          applyProductToRow(row, product);
+          hideSuggestions();
+        }
+
+        function handleInput() {
+          var list = findProductsByQuery(skuInput.value || '');
+          activeIndex = 0;
+          renderSuggestions(list.slice(0, 20));
+        }
+
+        function handleKeydown(e) {
+          var items = suggestionBox.querySelectorAll('.suggestion-item');
+          if (!items.length) return;
+          if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            activeIndex = Math.min(items.length - 1, activeIndex + 1);
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            activeIndex = Math.max(0, activeIndex - 1);
+          } else if (e.key === 'Enter') {
+            e.preventDefault();
+            if (activeIndex >= 0 && activeIndex < items.length) {
+              items[activeIndex].click();
+            }
+          }
+          items.forEach(function(item, idx){
+            item.classList.toggle('active', idx === activeIndex);
+          });
+        }
+
+        function handleBlur() {
+          setTimeout(function(){ hideSuggestions(); }, 150);
+          var p = findProductBySku(skuInput.value.trim());
+          if (p) {
+            applyProductToRow(row, p);
+          }
+        }
+
+        skuInput.addEventListener('input', handleInput);
+        skuInput.addEventListener('keydown', handleKeydown);
+        skuInput.addEventListener('blur', handleBlur);
+      }
+
+      function applyProductToRow(row, product) {
+        if (!row || !product) return;
+        var productInput = row.querySelector('td:nth-child(3) input');
+        var variantInput = row.querySelector('td:nth-child(4) input');
+        var img = row.querySelector('td:nth-child(5) img');
+        productInput.value = product.productName || '';
+        var variantTitle = product.fullName || '';
+        if (!variantTitle) {
+          var combo = ((product.color || '') + ' ' + (product.size || '')).trim();
+          variantTitle = combo;
+        }
+        variantInput.value = variantTitle || '';
+        var url = product.variantImage || product.productImage || '';
+        img.src = url;
+        img.alt = url ? 'Product image' : 'No image';
+      }
+
+      function applySkuToRow(row, sku) {
+        if (!sku) return;
+        var product = findProductBySku(sku);
+        if (product) {
+          applyProductToRow(row, product);
+        }
+      }
+
+      function updateLineAmount(row) {
+        var qty = parseFloat(row.querySelector('td:nth-child(6) input').value) || 0;
+        var price = parseFloat(row.querySelector('td:nth-child(7) input').value) || 0;
+        row.querySelector('td:nth-child(8) input').value = (qty * price).toFixed(2);
+      }
+
+      function refreshLineNumbers() {
+        var tbody = document.getElementById('items-body');
+        Array.from(tbody.children).forEach(function(tr, idx){
+          tr.querySelector('td:nth-child(1)').textContent = idx + 1;
+        });
+      }
+
+      // ---------------- Save / Load ----------------
+      function getHeaderData() {
+        var data = {};
+        headerFields.forEach(function(field){
+          var el = document.getElementById(field);
+          if (el) {
+            data[field] = el.value;
+          }
+        });
+        return data;
+      }
+
+      function getItemsData(poId) {
+        var tbody = document.getElementById('items-body');
+        return Array.from(tbody.children).map(function(tr, idx){
+          var cells = tr.querySelectorAll('td');
+          return {
+            po_id: poId,
+            line_no: idx + 1,
+            sku: cells[1].querySelector('input').value,
+            product_title: cells[2].querySelector('input').value,
+            variant_title: cells[3].querySelector('input').value,
+            image_url: cells[4].querySelector('img').src,
+            qty: cells[5].querySelector('input').value,
+            unit_price: cells[6].querySelector('input').value,
+            line_amount: cells[7].querySelector('input').value,
+            currency: document.getElementById('currency').value,
+            remark: cells[8].querySelector('input').value
+          };
+        });
+      }
+
+      function savePo() {
+        var poId = document.getElementById('po_id').value;
+        if (!poId) {
+          alert('PO ID is required to save.');
+          return;
+        }
+        var header = getHeaderData();
+        var items = getItemsData(poId);
+        var payload = { header: header, items: items };
+        google.script.run
+          .withSuccessHandler(function(){
+            setMessage('PO saved successfully', false);
+          })
+          .withFailureHandler(function(err){
+            setMessage('Error saving PO: ' + (err && err.message ? err.message : err), true);
+          })
+          .savePoWithItems(payload);
+      }
+
+      function loadPo() {
+        var poId = document.getElementById('po_id_to_load').value;
+        if (!poId) {
+          alert('Please enter a PO ID to load');
+          return;
+        }
+        google.script.run
+          .withSuccessHandler(function(po){
+            fillFormFromPo(po);
+            setMessage('PO loaded: ' + poId, false);
+          })
+          .withFailureHandler(function(err){
+            console.error('Error loading PO:', err);
+            alert('Error loading PO: ' + (err && err.message ? err.message : err));
+          })
+          .getPoWithItems(poId);
+      }
+
+      function fillFormFromPo(po) {
+        if (!po || !po.header) {
+          alert('PO not found');
+          return;
+        }
+        headerFields.forEach(function(field){
+          if (po.header.hasOwnProperty(field)) {
+            var el = document.getElementById(field);
+            if (el) el.value = po.header[field] || '';
+          }
+        });
+
+        var tbody = document.getElementById('items-body');
+        tbody.innerHTML = '';
+        (po.items || []).forEach(function(item){
+          addItemRow(item);
+        });
+        if (!po.items || !po.items.length) {
+          addItemRow();
+        }
+      }
+
+      // ---------------- Dashboard ----------------
+      function onDashboardTabShown() {
+        if (!dashboardLoaded) {
+          loadDashboard();
+        } else {
+          applyDashboardFilters();
+        }
+      }
+
+      function loadDashboard() {
+        google.script.run
+          .withSuccessHandler(function (data) {
+            console.log('Dashboard data loaded:', data);
+            dashboardData = Array.isArray(data) ? data : [];
+            dashboardLoaded = true;
+            buildDashboardStatusFilter();
+            applyDashboardFilters();
+          })
+          .withFailureHandler(function (err) {
+            console.error('Error loading dashboard:', err);
+            alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
+          })
+          .debugGetAllPOsForDashboard_Once();
+      }
+
+      function buildDashboardStatusFilter() {
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        if (!statusSelect) return;
+
+        statusSelect.innerHTML = '';
+        var optAll = document.createElement('option');
+        optAll.value = 'All';
+        optAll.textContent = 'All';
+        statusSelect.appendChild(optAll);
+        var optClosed = document.createElement('option');
+        optClosed.value = 'Closed';
+        optClosed.textContent = 'Closed';
+        statusSelect.appendChild(optClosed);
+        statusSelect.value = 'Closed';
+
+        if (!statusSelect.dataset.bound) {
+          statusSelect.addEventListener('change', applyDashboardFilters);
+          if (searchInput) {
+            searchInput.addEventListener('keydown', function(evt) {
+              if (evt.key === 'Enter') {
+                evt.preventDefault();
+                onDashboardSearch();
+              }
+            });
+          }
+          statusSelect.dataset.bound = '1';
+        }
+      }
+
+      function renderDashboard(rows) {
+        var tbody = document.getElementById('poTableBody');
+        var totalEl = document.getElementById('totalPOs');
+        if (!tbody || !totalEl) return;
+
+        tbody.innerHTML = '';
+        if (!rows || !rows.length) {
+          var trEmpty = document.createElement('tr');
+          var tdEmpty = document.createElement('td');
+          tdEmpty.colSpan = 7;
+          tdEmpty.textContent = 'No PO data';
+          trEmpty.appendChild(tdEmpty);
+          tbody.appendChild(trEmpty);
+          totalEl.textContent = '0';
+          return;
+        }
+
+        rows.slice(0, 10).forEach(function(po) {
+          var tr = document.createElement('tr');
+          tr.innerHTML =
+            '<td>' + escapeHtml(po.poId || '') + '</td>' +
+            '<td>' + formatDate(po.date) + '</td>' +
+            '<td>' + escapeHtml(po.supplier || '') + '</td>' +
+            '<td>' + escapeHtml(formatAmount(po.amount, po.currency)) + '</td>' +
+            '<td>' + escapeHtml(po.status || '') + '</td>' +
+            '<td>' + formatDate(po.eta) + '</td>' +
+            '<td>' + formatDate(po.whReceived) + '</td>';
+          tbody.appendChild(tr);
+        });
+
+        totalEl.textContent = String(rows.length);
+      }
+
+      function applyDashboardFilters() {
+        if (dashboardData === null) {
+          console.log('applyDashboardFilters: no dashboardData');
+          return;
+        }
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        var statusFilter = statusSelect ? statusSelect.value : 'All';
+        var searchTerm = searchInput ? (searchInput.value || '').trim().toLowerCase() : '';
+
+        var filtered = dashboardData.filter(function(po) {
+          var okStatus = true;
+          if (statusFilter === 'Closed') {
+            okStatus = (po.status || '').toLowerCase() === 'closed';
+          }
+          var okSearch = true;
+          if (searchTerm) {
+            var text = ((po.poId || '') + ' ' + (po.supplier || '')).toLowerCase();
+            okSearch = text.indexOf(searchTerm) !== -1;
+          }
+          return okStatus && okSearch;
+        });
+
+        console.log('applyDashboardFilters: filtered rows =', filtered.length);
+        renderDashboard(filtered);
+      }
+
+      function onDashboardSearch() {
+        applyDashboardFilters();
+      }
+
+      function onDashboardClear() {
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        if (statusSelect) statusSelect.value = 'All';
+        if (searchInput) searchInput.value = '';
+        applyDashboardFilters();
+      }
+
+      // ---------------- Helpers ----------------
+      function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      function formatDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().slice(0, 10);
+        }
+        return escapeHtml(v);
+      }
+
+      function formatAmount(amount, currency) {
+        if (amount == null || amount === '') return '';
+        return amount + (currency ? ' ' + currency : '');
+      }
+    </script>
+  </body>
+</html>
