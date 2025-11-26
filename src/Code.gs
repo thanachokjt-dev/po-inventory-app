@@ -48,6 +48,31 @@ function buildHeaderIndex_(headers) {
   return map;
 }
 
+/**
+ * Normalize a PO id for comparison: convert to string and trim spaces.
+ */
+function normalizePoId_(value) {
+  return value == null ? '' : String(value).trim();
+}
+
+/**
+ * Resolve a PO id column index, tolerant to different header spellings.
+ * Supports variations like "po_id", "PO ID", "Po ID", "PO_ID".
+ */
+function resolvePoIdColumnIndex_(headers) {
+  var normalized = headers.map(function (h) {
+    return String(h || '').trim().toLowerCase();
+  });
+  var candidates = ['po_id', 'po id', 'poid'];
+  for (var i = 0; i < normalized.length; i++) {
+    if (candidates.indexOf(normalized[i]) !== -1) {
+      return i;
+    }
+  }
+  // Fallback to the first column when nothing matches so the lookup still works.
+  return 0;
+}
+
 // --------------------- Product lookup ---------------------
 function listProductsForUi() {
   var sheet = getProductSheet_();
@@ -231,34 +256,38 @@ function savePoWithItems(payload) {
 
 // --------------------- Load PO with items ---------------------
 function getPoWithItems(poId) {
-  if (!poId) {
+  var targetId = normalizePoId_(poId);
+  if (!targetId) {
     throw new Error('poId is required');
   }
 
   var poSheet = getPoMasterSheet_();
   var poValues = poSheet.getDataRange().getValues();
   if (poValues.length <= 1) {
-    throw new Error('PO not found: ' + poId);
+    throw new Error('PO not found: ' + targetId);
   }
 
   var poHeaders = poValues[0];
+  var poIdColIdx = resolvePoIdColumnIndex_(poHeaders);
   var poHeaderIndex = buildHeaderIndex_(poHeaders);
   var headerRow = null;
+
   for (var i = 1; i < poValues.length; i++) {
     var row = poValues[i];
-    if (String(row[poHeaderIndex['po_id']]) === String(poId)) {
+    if (normalizePoId_(row[poIdColIdx]) === targetId) {
       headerRow = row;
       break;
     }
   }
 
   if (!headerRow) {
-    throw new Error('PO not found: ' + poId);
+    throw new Error('PO not found: ' + targetId);
   }
 
+  // Map every header name to its value so the client receives the full row.
   var header = {};
-  Object.keys(poHeaderIndex).forEach(function (name) {
-    header[name] = headerRow[poHeaderIndex[name]];
+  poHeaders.forEach(function (name, idx) {
+    header[name] = headerRow[idx];
   });
 
   var itemsSheet = getPoItemsSheet_();
@@ -267,11 +296,12 @@ function getPoWithItems(poId) {
 
   if (itemValues.length > 1) {
     var itemHeaders = itemValues[0];
+    var itemPoIdColIdx = resolvePoIdColumnIndex_(itemHeaders);
     var itemHeaderIndex = buildHeaderIndex_(itemHeaders);
 
     for (var j = 1; j < itemValues.length; j++) {
       var row = itemValues[j];
-      if (String(row[itemHeaderIndex['po_id']]) === String(poId)) {
+      if (normalizePoId_(row[itemPoIdColIdx]) === targetId) {
         items.push({
           line_no: row[itemHeaderIndex['line_no']],
           sku: row[itemHeaderIndex['sku']],

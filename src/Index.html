@@ -733,7 +733,7 @@
             setMessage('PO loaded');
           })
           .withFailureHandler(function(err){
-            console.error(err);
+            console.error('Error loading PO:', err);
             alert('Error loading PO: ' + (err && err.message ? err.message : err));
           })
           .getPoWithItems(poId);
