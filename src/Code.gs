@@ -1,3 +1,5 @@
+var PO_PORTALS_SPREADSHEET_ID = '1l7k8VQY0xk1o3i07itBSgQoqgz6Uqan_rnmIal0HQdA';
+
 // Entry point for the web app. Returns the HTML file.
 // Keeping this as a simple global function avoids "Script function not found: doGet"
 // errors when deploying as a Web App from the bound spreadsheet.
@@ -34,9 +36,9 @@ function getAllPOsForDashboard() {
   });
 }
 
-// Helper to get a sheet by name from the active spreadsheet
+// Helper to get a sheet by name from the target spreadsheet ID
 function getSheet_(name) {
-  var ss = SpreadsheetApp.getActive();
+  var ss = SpreadsheetApp.openById(PO_PORTALS_SPREADSHEET_ID);
   var sheet = ss.getSheetByName(name);
   if (!sheet) {
     throw new Error('Sheet not found: ' + name);
