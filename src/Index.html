@@ -374,8 +374,21 @@
         loadProducts();
         addItemRow();
         document.getElementById('supplier_code').addEventListener('change', onSupplierChange);
-        // Preload dashboard data so it is ready the first time the tab is opened
-        loadDashboard();
+
+        // Preload dashboard data so it is ready the first time the tab is opened.
+        google.script.run
+          .withSuccessHandler(function(pos) {
+            console.log('Initial dashboard data loaded:', pos && pos.length);
+            dashboardData = Array.isArray(pos) ? pos : [];
+            dashboardLoaded = true;
+            buildDashboardStatusFilter();
+            applyDashboardFilters();
+          })
+          .withFailureHandler(function(err) {
+            console.error('Error loading dashboard:', err);
+            alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
+          })
+          .getAllPOsForDashboard();
       });
 
       function switchTab(tab) {
