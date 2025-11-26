@@ -338,23 +338,39 @@ function getPoDashboardData() {
 
   var headers = poValues[0];
   var headerIndex = buildHeaderIndex_(headers);
+  var poIdColIdx = resolvePoIdColumnIndex_(headers);
+
   var list = [];
   var stats = {};
-
   for (var i = 1; i < poValues.length; i++) {
     var row = poValues[i];
-    var status = row[headerIndex['status_stage']] || 'Unknown';
-    stats[status] = (stats[status] || 0) + 1;
+    var poId = normalizePoId_(row[poIdColIdx]);
+    if (!poId) {
+      continue; // skip blank IDs so dashboard only shows real POs
+    }
+
+    // Pull values defensively in case a column is missing from this sheet
+    var statusIdx = headerIndex['status_stage'];
+    var supplierIdx = headerIndex['supplier_name'];
+    var amountIdx = headerIndex['po_amount_foreign'];
+    var currencyIdx = headerIndex['currency'];
+    var poDateIdx = headerIndex['po_date'];
+    var etaIdx = headerIndex['eta_date'];
+    var whIdx = headerIndex['wh_received_date'];
+
+    var status = statusIdx == null ? '' : row[statusIdx];
+    var statusLabel = status ? status : 'Unknown';
+    stats[statusLabel] = (stats[statusLabel] || 0) + 1;
 
     list.push({
-      po_id: row[headerIndex['po_id']],
-      po_date: row[headerIndex['po_date']],
-      supplier_name: row[headerIndex['supplier_name']],
-      po_amount_foreign: row[headerIndex['po_amount_foreign']],
-      currency: row[headerIndex['currency']],
-      status_stage: row[headerIndex['status_stage']],
-      eta_date: row[headerIndex['eta_date']],
-      wh_received_date: row[headerIndex['wh_received_date']]
+      po_id: poId,
+      po_date: poDateIdx == null ? '' : row[poDateIdx],
+      supplier_name: supplierIdx == null ? '' : row[supplierIdx],
+      po_amount_foreign: amountIdx == null ? '' : row[amountIdx],
+      currency: currencyIdx == null ? '' : row[currencyIdx],
+      status_stage: statusLabel,
+      eta_date: etaIdx == null ? '' : row[etaIdx],
+      wh_received_date: whIdx == null ? '' : row[whIdx]
     });
   }
 

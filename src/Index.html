@@ -838,7 +838,9 @@
 
         var filtered = (dashboardData.list || []).filter(function(item){
           var statusMatch = statusFilter === 'all' || item.status_stage === statusFilter;
-          var searchMatch = !search || (item.po_id && item.po_id.toLowerCase().indexOf(search) !== -1) || (item.supplier_name && item.supplier_name.toLowerCase().indexOf(search) !== -1);
+          var poIdText = (item.po_id == null ? '' : String(item.po_id)).toLowerCase();
+          var supplierText = (item.supplier_name == null ? '' : String(item.supplier_name)).toLowerCase();
+          var searchMatch = !search || poIdText.indexOf(search) !== -1 || supplierText.indexOf(search) !== -1;
           return statusMatch && searchMatch;
         });
 
