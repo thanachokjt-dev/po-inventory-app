@@ -13,8 +13,7 @@ function doGet(e) {
 
 /**
  * Fetch all PO rows for the dashboard table.
- * This is a thin wrapper around getPoDashboardData() so the dashboard
- * always uses the same data source/logic as the rest of the app.
+ * Reuses getPoDashboardData so the dashboard stays aligned with the main PO data source.
  */
 function getAllPOsForDashboard() {
   var data = getPoDashboardData();
@@ -22,18 +21,25 @@ function getAllPOsForDashboard() {
     return [];
   }
 
-  // Map the richer dashboard shape down to the simple table-friendly keys.
-  return data.list.map(function (row) {
+  var list = data.list.map(function (row) {
     return {
       poId: row.po_id || '',
       date: row.po_date || '',
       supplier: row.supplier_name || '',
       amount: row.po_amount_foreign || '',
+      currency: row.currency || '',
       status: row.status_stage || '',
       eta: row.eta_date || '',
       whReceived: row.wh_received_date || ''
     };
   });
+
+  Logger.log('getAllPOsForDashboard length = ' + list.length);
+  if (list.length > 0) {
+    Logger.log('First row from getAllPOsForDashboard = ' + JSON.stringify(list[0]));
+  }
+
+  return list;
 }
 
 // Helper to get a sheet by name from the target spreadsheet ID
@@ -410,4 +416,14 @@ function getPoDashboardData() {
     stats: stats,
     list: list
   };
+}
+
+// Temporary debug helper to inspect the dashboard data shape from the Apps Script editor.
+function debugGetAllPOsForDashboard_Once() {
+  var list = getAllPOsForDashboard();
+  Logger.log('debugGetAllPOsForDashboard_Once length = ' + list.length);
+  if (list.length > 0) {
+    Logger.log('debug first row = ' + JSON.stringify(list[0]));
+  }
+  return list;
 }

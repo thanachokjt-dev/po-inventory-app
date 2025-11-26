@@ -378,7 +378,8 @@
         // Preload dashboard data so it is ready the first time the tab is opened.
         google.script.run
           .withSuccessHandler(function(pos) {
-            console.log('Initial dashboard data loaded:', pos && pos.length);
+            console.log('Initial dashboard data loaded (raw):', pos);
+            console.log('Initial dashboard data length:', pos && pos.length);
             dashboardData = Array.isArray(pos) ? pos : [];
             dashboardLoaded = true;
             buildDashboardStatusFilter();
@@ -887,27 +888,17 @@
         totalEl.textContent = String(rows.length);
       }
 
-      // Apply filters then render the table
+      // Apply filters then render the table (temporarily renders all rows for debugging)
       function applyDashboardFilters() {
-        if (!dashboardData) return;
+        if (!dashboardData) {
+          console.log('applyDashboardFilters: no dashboardData');
+          return;
+        }
 
-        var statusSelect = document.getElementById('dashboard-status-filter');
-        var searchInput = document.getElementById('dashboard-search');
+        console.log('applyDashboardFilters: using rows =', dashboardData.length);
 
-        var statusFilter = (statusSelect && statusSelect.value) ? statusSelect.value : 'All';
-        var q = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
-
-        console.log('Applying dashboard filters. Status:', statusFilter, 'Query:', q);
-
-        var filtered = (dashboardData || []).filter(function (po) {
-          var okStatus = statusFilter === 'All' || po.status === statusFilter;
-          var text = (String(po.poId || '') + ' ' + String(po.supplier || '')).toLowerCase();
-          var okSearch = !q || text.indexOf(q) !== -1;
-          return okStatus && okSearch;
-        });
-
-        console.log('Filtered dashboard rows:', filtered.length);
-        renderDashboard(filtered);
+        // For now, ignore status/search filters and just render everything
+        renderDashboard(dashboardData);
       }
 
       // Trigger filtering when the user clicks Search
