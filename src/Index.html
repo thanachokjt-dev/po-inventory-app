@@ -316,10 +316,15 @@
     <div class="tab-content" id="tab-content-dashboard">
       <div class="section">
         <h3>Dashboard Overview</h3>
-        <div id="dashboard-cards" class="dashboard-cards"></div>
+        <div id="dashboard-cards" class="dashboard-cards">
+          <div class="card">
+            <h4>Total POs</h4>
+            <div id="dashboard-total-pos">0</div>
+          </div>
+        </div>
         <div class="filter-row">
           <label>Status filter:</label>
-          <select id="status-filter"></select>
+          <select id="dashboard-status-filter"></select>
           <label>Search:</label>
           <input type="text" id="dashboard-search" placeholder="Search by PO ID or Supplier" />
         </div>
@@ -383,7 +388,7 @@
         });
 
         if (tab === 'dashboard') {
-          loadDashboard();
+          onDashboardTabShown();
         }
       }
 
@@ -768,95 +773,131 @@
       }
 
       // ---------------- Dashboard ----------------
-      function loadDashboard() {
-        if (dashboardLoaded && dashboardData.list.length) {
-          renderDashboardFromData(dashboardData);
-          return;
+      // Track dashboard state so we only fetch once unless reloaded.
+      function onDashboardTabShown() {
+        if (!dashboardLoaded) {
+          loadDashboard();
+        } else {
+          applyDashboardFilters();
         }
+      }
+
+      function loadDashboard() {
         google.script.run
-          .withSuccessHandler(function(data){
+          .withSuccessHandler(function (data) {
+            console.log('Dashboard data:', data);
+            dashboardData = data || { stats: {}, list: [] };
             dashboardLoaded = true;
-            renderDashboardFromData(data || { stats: {}, list: [] });
+            renderDashboard();
           })
-          .withFailureHandler(function(err){
-            console.error(err);
-            alert('Failed to load dashboard: ' + (err && err.message ? err.message : err));
+          .withFailureHandler(function (err) {
+            console.error('Error loading dashboard:', err);
+            alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
           })
           .getPoDashboardData();
       }
 
-      function renderDashboardFromData(data) {
-        dashboardData = data || { stats: {}, list: [] };
-        renderDashboardCards();
-        populateStatusFilter();
-        renderDashboardTable();
-      }
+      // Render cards, filters, and table using the cached dashboardData
+      function renderDashboard() {
+        if (!dashboardData) return;
 
-      function renderDashboardCards() {
-        var container = document.getElementById('dashboard-cards');
-        container.innerHTML = '';
-        var total = Object.values(dashboardData.stats || {}).reduce(function(sum, val){ return sum + val; }, 0);
+        var totalEl = document.getElementById('dashboard-total-pos');
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        var cardsContainer = document.getElementById('dashboard-cards');
 
+        // Rebuild status cards. Keep the first card reserved for Total POs.
+        cardsContainer.innerHTML = '';
         var totalCard = document.createElement('div');
         totalCard.className = 'card';
-        totalCard.innerHTML = '<h4>Total POs</h4><div>' + total + '</div>';
-        container.appendChild(totalCard);
+        totalCard.innerHTML = '<h4>Total POs</h4><div id="dashboard-total-pos">0</div>';
+        cardsContainer.appendChild(totalCard);
 
-        Object.keys(dashboardData.stats || {}).forEach(function(status){
+        Object.keys(dashboardData.stats || {}).forEach(function (status) {
           var card = document.createElement('div');
           card.className = 'card';
-          card.innerHTML = '<h4>' + status + '</h4><div>' + dashboardData.stats[status] + '</div>';
-          container.appendChild(card);
+          card.innerHTML = '<h4>' + escapeHtml(status) + '</h4><div>' + (dashboardData.stats[status] || 0) + '</div>';
+          cardsContainer.appendChild(card);
         });
-      }
 
-      function populateStatusFilter() {
-        var select = document.getElementById('status-filter');
-        var current = select.value;
-        select.innerHTML = '';
-        var allOpt = document.createElement('option');
-        allOpt.value = 'all';
-        allOpt.textContent = 'All';
-        select.appendChild(allOpt);
-        Object.keys(dashboardData.stats || {}).forEach(function(status){
+        // Build status filter options
+        statusSelect.innerHTML = '<option value="All">All</option>';
+        Object.keys(dashboardData.stats || {}).forEach(function (status) {
           var opt = document.createElement('option');
           opt.value = status;
-          opt.textContent = status;
-          select.appendChild(opt);
+          opt.textContent = status + ' (' + dashboardData.stats[status] + ')';
+          statusSelect.appendChild(opt);
         });
-        select.value = current || 'all';
-        select.onchange = renderDashboardTable;
-        var searchInput = document.getElementById('dashboard-search');
-        searchInput.oninput = renderDashboardTable;
+
+        // Bind filter events only once
+        if (!statusSelect.dataset.bound) {
+          statusSelect.addEventListener('change', applyDashboardFilters);
+          searchInput.addEventListener('input', applyDashboardFilters);
+          statusSelect.dataset.bound = '1';
+        }
+
+        applyDashboardFilters();
       }
 
-      function renderDashboardTable() {
-        var tbody = document.getElementById('dashboard-table-body');
-        tbody.innerHTML = '';
-        var statusFilter = document.getElementById('status-filter').value;
-        var search = document.getElementById('dashboard-search').value.toLowerCase();
+      // Apply filters then populate the summary number and table rows.
+      function applyDashboardFilters() {
+        if (!dashboardData) return;
 
-        var filtered = (dashboardData.list || []).filter(function(item){
-          var statusMatch = statusFilter === 'all' || item.status_stage === statusFilter;
-          var poIdText = (item.po_id == null ? '' : String(item.po_id)).toLowerCase();
-          var supplierText = (item.supplier_name == null ? '' : String(item.supplier_name)).toLowerCase();
-          var searchMatch = !search || poIdText.indexOf(search) !== -1 || supplierText.indexOf(search) !== -1;
-          return statusMatch && searchMatch;
+        var totalEl = document.getElementById('dashboard-total-pos');
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        var tbody = document.getElementById('dashboard-table-body');
+
+        var statusFilter = statusSelect.value || 'All';
+        var q = (searchInput.value || '').toLowerCase();
+
+        var filtered = (dashboardData.list || []).filter(function (po) {
+          var okStatus = statusFilter === 'All' || po.status_stage === statusFilter;
+          var text = (String(po.po_id || '') + ' ' + String(po.supplier_name || '')).toLowerCase();
+          var okSearch = !q || text.indexOf(q) !== -1;
+          return okStatus && okSearch;
         });
 
-        filtered.forEach(function(item){
+        totalEl.textContent = String(filtered.length);
+
+        tbody.innerHTML = '';
+        filtered.forEach(function (po) {
           var tr = document.createElement('tr');
-          tr.innerHTML = [
-            item.po_id || '',
-            item.po_date || '',
-            item.supplier_name || '',
-            (item.po_amount_foreign || '') + ' ' + (item.currency || ''),
-            item.status_stage || 'Unknown',
-            item.eta_date || '',
-            item.wh_received_date || ''
-          ].map(function(val){ return '<td>' + val + '</td>'; }).join('');
+          tr.innerHTML =
+            '<td>' + escapeHtml(po.po_id) + '</td>' +
+            '<td>' + formatDate(po.po_date) + '</td>' +
+            '<td>' + escapeHtml(po.supplier_name || '') + '</td>' +
+            '<td>' + formatAmount(po.po_amount_foreign, po.currency) + '</td>' +
+            '<td>' + escapeHtml(po.status_stage || '') + '</td>' +
+            '<td>' + formatDate(po.eta_date) + '</td>' +
+            '<td>' + formatDate(po.wh_received_date) + '</td>';
           tbody.appendChild(tr);
         });
+      }
+
+      // Escape HTML to avoid rendering issues in table cells
+      function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      // Friendly date formatting; if parsing fails, return raw text
+      function formatDate(v) {
+        if (!v) return '';
+        var d = new Date(v);
+        if (!isNaN(d.getTime())) {
+          return d.toISOString().slice(0, 10); // yyyy-mm-dd
+        }
+        return escapeHtml(v);
+      }
+
+      // Combine amount + currency for display
+      function formatAmount(amount, currency) {
+        if (amount == null || amount === '') return '';
+        return amount + (currency ? (' ' + currency) : '');
       }
     </script>
   </body>
