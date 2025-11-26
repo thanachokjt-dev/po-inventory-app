@@ -327,6 +327,8 @@
           <select id="dashboard-status-filter"></select>
           <label>Search:</label>
           <input type="text" id="dashboard-search" placeholder="Search by PO ID or Supplier" />
+          <button type="button" id="dashboard-search-btn" onclick="onDashboardSearch()">Search</button>
+          <button type="button" id="dashboard-clear-btn" onclick="onDashboardClear()">Clear</button>
         </div>
         <table>
           <thead>
@@ -357,7 +359,8 @@
       // Cache for supplier and product data
       var supplierCache = [];
       var productCache = [];
-      var dashboardData = { stats: {}, list: [] };
+      // Dashboard state is loaded lazily when the tab is opened
+      var dashboardData = null;
       var dashboardLoaded = false;
       var activeTab = 'create';
 
@@ -785,9 +788,10 @@
       function loadDashboard() {
         google.script.run
           .withSuccessHandler(function (data) {
-            console.log('Dashboard data:', data);
+            console.log('Dashboard data loaded:', data);
             dashboardData = data || { stats: {}, list: [] };
             dashboardLoaded = true;
+            buildDashboardStatusFilter();
             renderDashboard();
           })
           .withFailureHandler(function (err) {
@@ -802,8 +806,6 @@
         if (!dashboardData) return;
 
         var totalEl = document.getElementById('dashboard-total-pos');
-        var statusSelect = document.getElementById('dashboard-status-filter');
-        var searchInput = document.getElementById('dashboard-search');
         var cardsContainer = document.getElementById('dashboard-cards');
 
         // Rebuild status cards. Keep the first card reserved for Total POs.
@@ -819,10 +821,16 @@
           card.innerHTML = '<h4>' + escapeHtml(status) + '</h4><div>' + (dashboardData.stats[status] || 0) + '</div>';
           cardsContainer.appendChild(card);
         });
+        applyDashboardFilters();
+      }
 
-        // Build status filter options
+      // Populate the status dropdown and wire filter/search listeners (once)
+      function buildDashboardStatusFilter() {
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+
         statusSelect.innerHTML = '<option value="All">All</option>';
-        Object.keys(dashboardData.stats || {}).forEach(function (status) {
+        Object.keys(dashboardData && dashboardData.stats || {}).forEach(function (status) {
           var opt = document.createElement('option');
           opt.value = status;
           opt.textContent = status + ' (' + dashboardData.stats[status] + ')';
@@ -832,11 +840,14 @@
         // Bind filter events only once
         if (!statusSelect.dataset.bound) {
           statusSelect.addEventListener('change', applyDashboardFilters);
-          searchInput.addEventListener('input', applyDashboardFilters);
+          searchInput.addEventListener('keydown', function(evt){
+            if (evt.key === 'Enter') {
+              evt.preventDefault();
+              onDashboardSearch();
+            }
+          });
           statusSelect.dataset.bound = '1';
         }
-
-        applyDashboardFilters();
       }
 
       // Apply filters then populate the summary number and table rows.
@@ -851,12 +862,16 @@
         var statusFilter = statusSelect.value || 'All';
         var q = (searchInput.value || '').toLowerCase();
 
+        console.log('Applying dashboard filters. Status:', statusFilter, 'Query:', q);
+
         var filtered = (dashboardData.list || []).filter(function (po) {
           var okStatus = statusFilter === 'All' || po.status_stage === statusFilter;
           var text = (String(po.po_id || '') + ' ' + String(po.supplier_name || '')).toLowerCase();
           var okSearch = !q || text.indexOf(q) !== -1;
           return okStatus && okSearch;
         });
+
+        console.log('Filtered dashboard rows:', filtered.length);
 
         totalEl.textContent = String(filtered.length);
 
@@ -873,6 +888,20 @@
             '<td>' + formatDate(po.wh_received_date) + '</td>';
           tbody.appendChild(tr);
         });
+      }
+
+      // Trigger filtering when the user clicks Search
+      function onDashboardSearch() {
+        applyDashboardFilters();
+      }
+
+      // Clear search text and reset status filter to show all rows
+      function onDashboardClear() {
+        var statusSelect = document.getElementById('dashboard-status-filter');
+        var searchInput = document.getElementById('dashboard-search');
+        if (statusSelect) statusSelect.value = 'All';
+        if (searchInput) searchInput.value = '';
+        applyDashboardFilters();
       }
 
       // Escape HTML to avoid rendering issues in table cells
