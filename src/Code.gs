@@ -11,29 +11,62 @@ function doGet(e) {
 
 /**
  * Fetch all PO rows for the simple dashboard table.
- * Reads the "POs" sheet (header row at row 1) and maps to plain objects
+ * Reads the PO_MASTER sheet (header row at row 1) and maps to plain objects
  * so the client can render them directly. Columns are assumed to be:
- * PO ID | Date | Supplier | Amount | Status | ETA | WH Received
+ * po_id | po_date | supplier_name | po_amount_thb | status_stage | eta_date | wh_received_date
  */
 function getAllPOsForDashboard() {
-  var sheet = getSheet_('POs');
+  // Gracefully handle missing sheet by returning an empty list
+  var sheet;
+  try {
+    sheet = getPOSheet_();
+  } catch (err) {
+    return [];
+  }
+
   var values = sheet.getDataRange().getValues();
   if (values.length <= 1) {
     return [];
   }
 
+  var headers = values[0];
+  var headerIndex = buildHeaderIndex_(headers);
+  var poIdColIdx = resolvePoIdColumnIndex_(headers);
+  var poDateIdx = headerIndex['po_date'];
+  var supplierIdx = headerIndex['supplier_name'];
+  var amountThbIdx = headerIndex['po_amount_thb'];
+  var amountForeignIdx = headerIndex['po_amount_foreign'];
+  var statusIdx = headerIndex['status_stage'];
+  var etaIdx = headerIndex['eta_date'];
+  var whIdx = headerIndex['wh_received_date'];
+
   var dataRows = values.slice(1);
-  return dataRows.map(function (row) {
-    return {
-      poId: row[0],
-      date: row[1],
-      supplier: row[2],
-      amount: row[3],
-      status: row[4],
-      eta: row[5],
-      whReceived: row[6]
-    };
-  });
+  return dataRows
+    .map(function (row) {
+      var poId = normalizePoId_(row[poIdColIdx]);
+      if (!poId) {
+        return null; // Skip blank IDs entirely
+      }
+
+      // Prefer THB amount, but fall back to foreign amount if missing
+      var amount = amountThbIdx == null ? '' : row[amountThbIdx];
+      if ((amount === '' || amount == null) && amountForeignIdx != null) {
+        amount = row[amountForeignIdx];
+      }
+
+      return {
+        poId: poId,
+        date: poDateIdx == null ? '' : row[poDateIdx],
+        supplier: supplierIdx == null ? '' : row[supplierIdx],
+        amount: amount,
+        status: statusIdx == null ? '' : row[statusIdx],
+        eta: etaIdx == null ? '' : row[etaIdx],
+        whReceived: whIdx == null ? '' : row[whIdx]
+      };
+    })
+    .filter(function (item) {
+      return item !== null;
+    });
 }
 
 // Helper to get a sheet by name from the active spreadsheet
@@ -55,6 +88,11 @@ function getSupplierSheet_() {
 }
 
 function getPoMasterSheet_() {
+  return getSheet_('PO_MASTER');
+}
+
+// Dashboard-specific helper for backwards compatibility with earlier naming
+function getPOSheet_() {
   return getSheet_('PO_MASTER');
 }
 
