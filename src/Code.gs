@@ -17,7 +17,9 @@ function doGet(e) {
  */
 function getAllPOsForDashboard() {
   var data = getPoDashboardData();
-  if (!data || !data.list) {
+
+  if (!data || !Array.isArray(data.list)) {
+    Logger.log('getAllPOsForDashboard: data.list is missing or not an array');
     return [];
   }
 
@@ -34,9 +36,9 @@ function getAllPOsForDashboard() {
     };
   });
 
-  Logger.log('getAllPOsForDashboard length = ' + list.length);
+  Logger.log('getAllPOsForDashboard returning ' + list.length + ' rows');
   if (list.length > 0) {
-    Logger.log('First row from getAllPOsForDashboard = ' + JSON.stringify(list[0]));
+    Logger.log('getAllPOsForDashboard first row = ' + JSON.stringify(list[0]));
   }
 
   return list;
@@ -423,7 +425,7 @@ function debugGetAllPOsForDashboard_Once() {
   var list = getAllPOsForDashboard();
   Logger.log('debugGetAllPOsForDashboard_Once length = ' + list.length);
   if (list.length > 0) {
-    Logger.log('debug first row = ' + JSON.stringify(list[0]));
+    Logger.log('debugGetAllPOsForDashboard_Once first row = ' + JSON.stringify(list[0]));
   }
   return list;
 }

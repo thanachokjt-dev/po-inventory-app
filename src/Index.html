@@ -389,7 +389,7 @@
             console.error('Error loading dashboard:', err);
             alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
           })
-          .getAllPOsForDashboard();
+          .debugGetAllPOsForDashboard_Once();
       });
 
       function switchTab(tab) {
@@ -815,7 +815,7 @@
             console.error('Error loading dashboard:', err);
             alert('Error loading dashboard: ' + (err && err.message ? err.message : err));
           })
-          .getAllPOsForDashboard();
+          .debugGetAllPOsForDashboard_Once();
       }
 
       // Build status filter options based on the loaded data
